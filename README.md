@@ -7,7 +7,7 @@ This is our university project for Configuration Management. We are building a s
 - `/frontend`: Next.js Web App
 
 ## How to run
-You need Docker installed (not yet). To start everything, just run:
+You need Docker installed. To start everything, just run:
 
 ```bash
 docker-compose up
