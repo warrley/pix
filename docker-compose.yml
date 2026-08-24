@@ -4,8 +4,8 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:
-      POSTGRES_USER: urubudopix
-      POSTGRES_PASSWORD: pix12345
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5433:5432"
 
@@ -15,9 +15,9 @@ services:
     volumes:
       - ./backend:/rails
     ports:
-      - "3000:3000"
+      - "80:3000"
     environment:
-      DATABASE_URL: postgres://urubudopix:pix12345@db:5432/backend_development
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/backend_development
       SECRET_KEY_BASE: ${SECRET_KEY_BASE}
     depends_on:
       - db
