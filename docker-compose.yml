@@ -18,6 +18,7 @@ services:
       - "3000:3000"
     environment:
       DATABASE_URL: postgres://urubudopix:pix12345@db:5432/backend_development
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE}
     depends_on:
       - db
 
