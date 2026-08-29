@@ -17,7 +17,14 @@ class UserTest < ActiveSupport::TestCase
     user = User.new(name: "Bob", email: "bob@example.com", doc_id: "12345678900")
 
     assert_not user.valid?
-    assert_includes user.errors[:doc_id], "não é um CPF ou CNPJ válido"
+    assert_includes user.errors[:doc_id], "is not a valid CPF or CNPJ"
+  end
+
+  test "requires a doc_id" do
+    user = User.new(name: "Alice", email: "alice@example.com", doc_id: nil)
+
+    assert_not user.valid?
+    assert_includes user.errors[:doc_id], "can't be blank"
   end
 
   test "requires a name" do
@@ -56,19 +63,21 @@ class UserTest < ActiveSupport::TestCase
     user = User.new(name: "Alice", email: "alice@example.com", doc_id: "52998224725", phone: "1199999")
 
     assert_not user.valid?
-    assert_includes user.errors[:phone], "deve estar no formato E.164 (+55DDXXXXXXXXX)"
+    assert_includes user.errors[:phone], "must be in E.164 format (+55DDXXXXXXXXX)"
   end
 
-  test "accepts phone as nil" do
-    user = User.new(name: "Alice", email: "alice@example.com", doc_id: "52998224725", phone: nil)
+  test "accepts phone as nil or empty string" do
+    user_nil = User.new(name: "Alice", email: "alice1@example.com", doc_id: "52998224725", phone: nil)
+    user_blank = User.new(name: "Alice", email: "alice2@example.com", doc_id: "51783429097", phone: "")
 
-    assert user.valid?, -> { user.errors.full_messages.to_sentence }
+    assert user_nil.valid?, -> { user_nil.errors.full_messages.to_sentence }
+    assert user_blank.valid?, -> { user_blank.errors.full_messages.to_sentence }
   end
 
   test "rejects repeated digits doc_id" do
     user = User.new(name: "Alice", email: "alice@example.com", doc_id: "11111111111")
 
     assert_not user.valid?
-    assert_includes user.errors[:doc_id], "não é um CPF ou CNPJ válido"
+    assert_includes user.errors[:doc_id], "is not a valid CPF or CNPJ"
   end
 end

@@ -11,7 +11,7 @@ class CpfCnpjValidator < ActiveModel::EachValidator
             else false
             end
 
-    record.errors.add(attribute, "não é um CPF ou CNPJ válido") unless valid
+    record.errors.add(attribute, "is not a valid CPF or CNPJ") unless valid
   end
 
   private
