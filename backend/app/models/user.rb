@@ -1,6 +1,8 @@
 class User < ApplicationRecord
   before_validation :normalize_attributes
 
+  has_many :accounts, dependent: :restrict_with_error
+
   validates :name, presence: true
   validates :email, presence: true,
                     uniqueness: { case_sensitive: false },
