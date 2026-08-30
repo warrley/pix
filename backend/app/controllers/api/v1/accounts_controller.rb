@@ -1,7 +1,7 @@
 module Api
   module V1
     class AccountsController < ApplicationController
-      before_action :set_account, only: [:show, :destroy]
+      before_action :set_account, only: [ :show, :destroy ]
 
       def create
         account = Account.new(account_params)
@@ -12,7 +12,7 @@ module Api
           render_error(account.errors.to_hash)
         end
       end
-      
+
       def index
         user = User.find(params[:user_id])
         render_success(user.accounts)
@@ -24,10 +24,11 @@ module Api
 
       def destroy
         if @account.status == "closed"
-          return render_error({ error: "Account is already closed"}, status: :unprocessable_entity)
+          return render_error("Account is already closed", status: :unprocessable_entity)
         end
-        if @account.balance > 0 
-          return render_error({error: "Cannot close account with existing balance"}, status: :bad_request)
+
+        if @account.balance > 0
+          return render_error("Cannot close account with existing balance", status: :bad_request)
         end
 
         if @account.update(status: "closed")

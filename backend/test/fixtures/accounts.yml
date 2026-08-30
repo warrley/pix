@@ -1,0 +1,5 @@
+one:
+  user: one
+  account_number: "123456"
+  balance: 100.0
+  status: "active"
