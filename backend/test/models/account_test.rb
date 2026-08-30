@@ -15,7 +15,7 @@ class AccountTest < ActiveSupport::TestCase
   end
 
   test "requires a valid user" do
-    account = Account.new(agency_number: "0001", balance: 0.0, status: "active")
+    account = Account.new(agency_number: "0001", balance: 0.0, status: :active)
 
     assert_not account.valid?
     assert_includes account.errors[:user], "must exist"
@@ -29,7 +29,7 @@ class AccountTest < ActiveSupport::TestCase
   end
 
   test "rejects an invalid status" do
-    account = @user.accounts.build(status: "pending")
+    account = @user.accounts.build(status: :pending)
 
     assert_not account.valid?
     assert_includes account.errors[:status], "is not included in the list"
@@ -42,5 +42,18 @@ class AccountTest < ActiveSupport::TestCase
     assert_not_equal first_account.account_number, second_account.account_number
     assert_match(/\A\d{6}\z/, first_account.account_number)
     assert_match(/\A\d{6}\z/, second_account.account_number)
+  end
+
+  test "supports enum status predicates" do
+    account = @user.accounts.create!(status: :active)
+    assert account.active?
+    assert_not account.blocked?
+    assert_not account.closed?
+
+    account.blocked!
+    assert account.blocked?
+
+    account.closed!
+    assert account.closed?
   end
 end

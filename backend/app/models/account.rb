@@ -1,7 +1,12 @@
 class Account < ApplicationRecord
   attribute :agency_number, :string, default: "0001"
   attribute :balance, :decimal, default: 0.0
-  attribute :status, :string, default: "active"
+
+  enum :status, {
+    active:  "active",
+    blocked: "blocked",
+    closed:  "closed"
+  }, default: :active, validate: true
 
   belongs_to :user
 
@@ -10,7 +15,6 @@ class Account < ApplicationRecord
   validates :user, presence: true
   validates :account_number, presence: true, uniqueness: true
   validates :agency_number, presence: true, length: { maximum: 10 }
-  validates :status, inclusion: { in: %w[active blocked closed] }
   validates :balance, numericality: { greater_than_or_equal_to: 0 }
 
   private
