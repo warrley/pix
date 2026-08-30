@@ -8,7 +8,7 @@ class UserTest < ActiveSupport::TestCase
   end
 
   test "accepts a valid CNPJ" do
-    user = User.new(name: "Empresa Teste", email: "empresa@example.com", doc_id: "11222333000181")
+    user = User.new(name: "Test Company", email: "company@example.com", doc_id: "11222333000181")
 
     assert user.valid?, -> { user.errors.full_messages.to_sentence }
   end
