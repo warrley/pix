@@ -80,4 +80,12 @@ class UserTest < ActiveSupport::TestCase
     assert_not user.valid?
     assert_includes user.errors[:doc_id], "is not a valid CPF or CNPJ"
   end
+
+  test "cannot be destroyed when it has associated accounts" do
+    user = User.create!(name: "Alice", email: "alice.destroy@example.com", doc_id: "52998224725")
+    user.accounts.create!
+
+    assert_not user.destroy
+    assert_predicate user.errors[:base], :present?
+  end
 end
