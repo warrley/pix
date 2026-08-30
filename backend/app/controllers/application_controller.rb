@@ -1,6 +1,10 @@
 class ApplicationController < ActionController::API
   rescue_from ActiveRecord::RecordNotFound, with: :render_not_found
 
+  rescue_from ActionController::ParameterMissing do |e|
+    render_error(e.message, status: :bad_request)
+  end
+
   private
 
   def render_success(data, status: :ok)

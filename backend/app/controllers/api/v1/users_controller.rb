@@ -26,8 +26,11 @@ module Api
       end
 
       def destroy
-        @user.destroy
-        head :no_content
+        if @user.destroy # because the accounts linked
+          head :no_content
+        else
+          render_error(@user.errors.to_hash)
+        end
       end
 
       private

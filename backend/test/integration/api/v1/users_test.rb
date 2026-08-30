@@ -2,10 +2,10 @@ require "test_helper"
 
 class Api::V1::UsersTest < ActionDispatch::IntegrationTest
   test "POST /api/v1/users creates a user with valid data" do
-    post "/api/v1/users", params: {
+    post api_v1_users_path, params: {
       user: {
-        name: "João Silva",
-        email: "joao@example.com",
+        name: "John Doe",
+        email: "john@example.com",
         doc_id: "52998224725",
         phone: "+5511999999999"
       }
@@ -16,8 +16,16 @@ class Api::V1::UsersTest < ActionDispatch::IntegrationTest
     assert_nil response.parsed_body["error"]
   end
 
+  test "POST /api/v1/users returns 400 when user param is missing" do
+    post api_v1_users_path, params: {}, as: :json
+
+    assert_response :bad_request
+    assert_nil response.parsed_body["data"]
+    assert response.parsed_body["error"].present?
+  end
+
   test "POST /api/v1/users returns 422 with validation errors" do
-    post "/api/v1/users", params: {
+    post api_v1_users_path, params: {
       user: {
         name: "",
         email: "invalid-email",
@@ -35,7 +43,7 @@ class Api::V1::UsersTest < ActionDispatch::IntegrationTest
   test "GET /api/v1/users/:id returns the user when it exists" do
     user = users(:one)
 
-    get "/api/v1/users/#{user.id}", as: :json
+    get api_v1_user_path(user), as: :json
 
     assert_response :ok
     assert_equal user.name, response.parsed_body.dig("data", "name")
@@ -43,7 +51,7 @@ class Api::V1::UsersTest < ActionDispatch::IntegrationTest
   end
 
   test "GET /api/v1/users/:id returns 404 when the user does not exist" do
-    get "/api/v1/users/999999", as: :json
+    get api_v1_user_path(id: 999999), as: :json
 
     assert_response :not_found
     assert_nil response.parsed_body["data"]
@@ -53,25 +61,25 @@ class Api::V1::UsersTest < ActionDispatch::IntegrationTest
   test "PUT /api/v1/users/:id updates a user with valid data" do
     user = users(:one)
 
-    put "/api/v1/users/#{user.id}", params: {
+    put api_v1_user_path(user), params: {
       user: {
-        name: "Nome Atualizado",
-        email: "novo@example.com",
+        name: "Updated Name",
+        email: "new@example.com",
         doc_id: user.doc_id,
         phone: "+5511888888888"
       }
     }, as: :json
 
     assert_response :ok
-    assert_equal "Nome Atualizado", response.parsed_body.dig("data", "name")
-    assert_equal "Nome Atualizado", user.reload.name
+    assert_equal "Updated Name", response.parsed_body.dig("data", "name")
+    assert_equal "Updated Name", user.reload.name
     assert_nil response.parsed_body["error"]
   end
 
   test "PUT /api/v1/users/:id returns 422 when validation fails" do
     user = users(:one)
 
-    put "/api/v1/users/#{user.id}", params: {
+    put api_v1_user_path(user), params: {
       user: {
         name: "",
         email: "invalid-email",
@@ -87,7 +95,7 @@ class Api::V1::UsersTest < ActionDispatch::IntegrationTest
   test "DELETE /api/v1/users/:id deletes an existing user" do
     user = users(:one)
 
-    delete "/api/v1/users/#{user.id}", as: :json
+    delete api_v1_user_path(user), as: :json
 
     assert_response :no_content
     assert_equal "", response.body
