@@ -93,12 +93,22 @@ class Api::V1::UsersTest < ActionDispatch::IntegrationTest
   end
 
   test "DELETE /api/v1/users/:id deletes an existing user" do
-    user = users(:one)
+    user = users(:two)
 
     delete api_v1_user_path(user), as: :json
 
     assert_response :no_content
     assert_equal "", response.body
     assert_nil User.find_by(id: user.id)
+  end
+
+  test "DELETE /api/v1/users/:id returns 422 when user has dependent accounts" do
+    user = users(:one)
+
+    delete api_v1_user_path(user), as: :json
+
+    assert_response :unprocessable_entity
+    assert_nil response.parsed_body["data"]
+    assert response.parsed_body["error"].key?("base")
   end
 end
