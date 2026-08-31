@@ -9,6 +9,7 @@ class Account < ApplicationRecord
   }, default: :active, validate: true
 
   belongs_to :user
+  has_many :pix_keys, dependent: :restrict_with_error
 
   before_validation :generate_account_number, on: :create
 

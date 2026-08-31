@@ -1,0 +1,11 @@
+default_email:
+  account: one
+  key_type: email
+  key_value: user1@example.com
+  status: active
+
+default_cpf:
+  account: one
+  key_type: cpf
+  key_value: "32165498791"
+  status: active

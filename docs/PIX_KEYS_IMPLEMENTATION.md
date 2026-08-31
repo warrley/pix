@@ -35,10 +35,29 @@
 
 ---
 
-## 🟡 Etapa 2: Model & Validator Service (PENDENTE)
-- [ ] Criar `app/services/pix/key_validator_service.rb` (Validações de CPF/CNPJ módulo-11, E.164, etc.)
-- [ ] Criar `app/models/pix_key.rb` (Relacionamentos e validações de modelo, limite de 5 chaves)
-- [ ] Testes unitários de model e validator (`test/models/pix_key_test.rb`, `test/services/pix/key_validator_service_test.rb`)
+## 🟢 Etapa 2: Model & Validator Service (CONCLUÍDO)
+
+### 📄 Componentes Criados
+- `app/services/pix/key_validator_service.rb`:
+  - **CPF**: Validação Módulo-11 de dígitos verificadores e rejeição de dígitos idênticos.
+  - **CNPJ**: Validação de pesos e dígitos verificadores de CNPJ.
+  - **Email**: Validação no padrão RFC 5322 e limite de 77 caracteres.
+  - **Telefone**: Validação de padrão E.164 (`+55` + DDD 2 dígitos + 8 ou 9 dígitos).
+  - **Aleatória (EVP)**: Gerador automático de UUID v4 (`SecureRandom.uuid`).
+- `app/models/pix_key.rb`:
+  - Enums para `status` e `key_type` com validação.
+  - Associações: `belongs_to :account` e `has_one :user, through: :account`.
+  - Normalização automática (remoção de caracteres não numéricos para CPF/CNPJ, `downcase` em Email).
+  - **Regra BACEN**: Validação de limite máximo de 5 chaves ativas por conta.
+  - **Regra BACEN**: Validação de titularidade exigindo que chave do tipo CPF seja idêntica ao `doc_id` do titular da conta.
+- `app/models/account.rb`:
+  - Adicionada associação `has_many :pix_keys, dependent: :restrict_with_error`.
+
+### 🧪 Testes Unitários Realizados
+- `test/services/pix/key_validator_service_test.rb`: Testes para CPF, CNPJ, Email, Telefone E.164 e UUID.
+- `test/models/pix_key_test.rb`: Testes cobrindo validações de modelo, limite de 5 chaves e conferência de titularidade do CPF.
+- **Resultado**: 51 testes executados, 136 asserções com 0 falhas e 0 erros.
+
 ---
 
 ## 🟡 Etapa 3: Controllers & API Endpoints (PENDENTE)
