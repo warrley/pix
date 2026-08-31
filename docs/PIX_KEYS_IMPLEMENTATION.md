@@ -1,6 +1,6 @@
 # 📌 Registro de Progresso — Issue #9: PIX Keys Engine
 > Responsável: `tiago-ufc`  
-> Branch: `feat/pix-key-model`
+> Branches: `feat/pix-key-model` (Etapas 1 e 2) & `feat/pix-keys-api` (Etapa 3)
 
 ---
 
@@ -60,7 +60,19 @@
 
 ---
 
-## 🟡 Etapa 3: Controllers & API Endpoints (PENDENTE)
-- [ ] Criar `app/controllers/api/v1/pix_keys_controller.rb`
-- [ ] Rotas `POST`, `GET`, `DELETE` (soft delete)
-- [ ] Testes de integração de API (`test/integration/api/v1/pix_keys_test.rb`)
+## 🟢 Etapa 3: Controllers & API Endpoints (CONCLUÍDO)
+
+### 📄 Componentes Criados
+- `config/routes.rb`:
+  - `POST /api/v1/accounts/:account_id/pix_keys` -> Cadastro de nova chave PIX.
+  - `GET /api/v1/accounts/:account_id/pix_keys` -> Listagem de chaves ativas da conta.
+  - `DELETE /api/v1/pix_keys/:id` -> Cancelamento de chave PIX (soft delete).
+- `app/controllers/api/v1/pix_keys_controller.rb`:
+  - Utilização dos envelopes de resposta `render_success` e `render_error`.
+  - Tratamento de exceção `ActiveRecord::RecordNotUnique` para chaves duplicadas (retornando HTTP 422).
+  - Soft-delete executando `@pix_key.cancelled!` na ação `destroy`.
+
+### 🧪 Testes de Integração Realizados
+- `test/integration/api/v1/pix_keys_test.rb`:
+  - Testes de criação (201 Created), erros de validação/duplicidade (422 Unprocessable Entity), conta inativa (422 Unprocessable Entity), conta não encontrada (404 Not Found), listagem de ativas (200 OK), cancelamento (204 No Content) e tentativa de cancelamento de chave já cancelada (422 Unprocessable Entity).
+- **Resultado Final**: 65 testes executados, 168 asserções com 0 falhas e 0 erros.

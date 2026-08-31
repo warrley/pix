@@ -21,11 +21,14 @@ class PixKey < ApplicationRecord
 
   validates :account, presence: true
   validates :key_type, presence: true
-  validates :key_value, presence: true, length: { maximum: 77 }
+  validates :key_value, presence: true,
+                        length: { maximum: 77 },
+                        uniqueness: { conditions: -> { where(status: "active") }, message: "is already registered" }
 
   validate :validate_key_value_format
   validate :max_active_keys_per_account, on: :create
-  validate :cpf_key_must_match_account_owner_tax_id
+  validate :tax_id_key_must_match_account_owner
+  validate :account_must_be_active, on: :create
 
   private
 
@@ -66,16 +69,23 @@ class PixKey < ApplicationRecord
     return unless active?
 
     if account.pix_keys.where(status: "active").count >= 5
-      errors.add(:base, "Maximum of 5 active PIX keys per account reached")
+      errors.add(:base, "maximum of 5 active PIX keys per account reached")
     end
   end
 
-  def cpf_key_must_match_account_owner_tax_id
-    return unless cpf? && key_value.present? && account&.user
+  def tax_id_key_must_match_account_owner
+    return unless (cpf? || cnpj?) && key_value.present? && account&.user
 
     owner_doc = account.user.doc_id.to_s.gsub(/\D/, "")
+    doc_label = cpf? ? "CPF" : "CNPJ"
     if key_value != owner_doc
-      errors.add(:key_value, "must match account owner's CPF (#{owner_doc})")
+      errors.add(:key_value, "must match account owner's #{doc_label} (#{owner_doc})")
     end
+  end
+
+  def account_must_be_active
+    return unless account
+
+    errors.add(:account, "must be active to register a PIX key") unless account.active?
   end
 end

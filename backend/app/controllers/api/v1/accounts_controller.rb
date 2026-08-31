@@ -1,7 +1,7 @@
 module Api
   module V1
     class AccountsController < ApplicationController
-      before_action :set_account, only: [:show, :destroy]
+      before_action :set_account, only: [ :show, :destroy ]
 
       def create
         account = Account.new(account_params)
