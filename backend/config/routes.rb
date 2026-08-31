@@ -10,7 +10,10 @@ Rails.application.routes.draw do
       resources :users, only: [:create, :show, :update, :destroy] do
         resources :accounts, only: [:index]
       end
-      resources :accounts, only: [:create, :show, :destroy]
+      resources :accounts, only: [:create, :show, :destroy] do
+        resources :pix_keys, only: [:create, :index]
+      end
+      resources :pix_keys, only: [:destroy]
     end
   end
 
