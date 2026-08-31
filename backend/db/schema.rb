@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_29_010000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_31_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -25,7 +25,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_29_010000) do
     t.index ["account_number"], name: "index_accounts_on_account_number", unique: true
     t.index ["user_id"], name: "index_accounts_on_user_id"
     t.check_constraint "balance >= 0::numeric", name: "accounts_balance_non_negative"
-    t.check_constraint "status::text = ANY (ARRAY['active'::character varying, 'blocked'::character varying, 'closed'::character varying]::text[])", name: "accounts_status_valid"
+    t.check_constraint "status::text = ANY (ARRAY['active'::character varying::text, 'blocked'::character varying::text, 'closed'::character varying::text])", name: "accounts_status_valid"
+  end
+
+  create_table "pix_keys", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.datetime "created_at", null: false
+    t.string "key_type", limit: 10, null: false
+    t.string "key_value", limit: 77, null: false
+    t.string "status", limit: 20, default: "active", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_pix_keys_on_account_id"
+    t.index ["key_value"], name: "index_pix_keys_on_key_value_active", unique: true, where: "((status)::text = 'active'::text)"
+    t.check_constraint "key_type::text = ANY (ARRAY['cpf'::character varying, 'cnpj'::character varying, 'email'::character varying, 'phone'::character varying, 'random'::character varying]::text[])", name: "pix_keys_key_type_valid"
+    t.check_constraint "status::text = ANY (ARRAY['active'::character varying, 'suspended'::character varying, 'cancelled'::character varying]::text[])", name: "pix_keys_status_valid"
   end
 
   create_table "users", force: :cascade do |t|
@@ -40,4 +53,5 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_29_010000) do
   end
 
   add_foreign_key "accounts", "users"
+  add_foreign_key "pix_keys", "accounts"
 end
