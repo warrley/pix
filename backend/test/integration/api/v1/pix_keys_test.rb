@@ -45,6 +45,17 @@ class Api::V1::PixKeysTest < ActionDispatch::IntegrationTest
     assert_equal "Record not found", response.parsed_body["error"]
   end
 
+  test "POST /api/v1/accounts/:account_id/pix_keys returns 422 when account is not active" do
+    @account.update!(status: "closed")
+
+    post api_v1_account_pix_keys_path(account_id: @account.id), params: {
+      pix_key: { key_type: "email", key_value: "test_inactive@example.com" }
+    }, as: :json
+
+    assert_response :unprocessable_entity
+    assert_not_nil response.parsed_body["error"]
+  end
+
   test "GET /api/v1/accounts/:account_id/pix_keys returns active keys" do
     get api_v1_account_pix_keys_path(account_id: @account.id), as: :json
 
@@ -63,8 +74,16 @@ class Api::V1::PixKeysTest < ActionDispatch::IntegrationTest
   test "DELETE /api/v1/pix_keys/:id cancels key (soft-delete)" do
     delete api_v1_pix_key_path(id: @existing_key.id), as: :json
 
-    assert_response :ok
-    assert_nil response.parsed_body["error"]
+    assert_response :no_content
+    assert_equal "cancelled", @existing_key.reload.status
+  end
+
+  test "DELETE /api/v1/pix_keys/:id is idempotent when key is already cancelled" do
+    @existing_key.cancelled!
+
+    delete api_v1_pix_key_path(id: @existing_key.id), as: :json
+
+    assert_response :no_content
     assert_equal "cancelled", @existing_key.reload.status
   end
 

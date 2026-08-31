@@ -28,10 +28,10 @@ module Pix
 
       digits = clean_cnpj.chars.map(&:to_i)
 
-      d1 = calculate_cnpj_digit(digits[0..11], [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2])
+      d1 = calculate_cnpj_digit(digits[0..11], [ 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2 ])
       return false if d1 != digits[12]
 
-      d2 = calculate_cnpj_digit(digits[0..12], [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2])
+      d2 = calculate_cnpj_digit(digits[0..12], [ 6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2 ])
       return false if d2 != digits[13]
 
       true

@@ -23,7 +23,7 @@ module Api
 
       def destroy
         if @pix_key.cancelled!
-          render_success(nil)
+          head :no_content
         else
           render_error(@pix_key.errors.to_hash)
         end

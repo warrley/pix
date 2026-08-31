@@ -74,5 +74,5 @@
 
 ### 🧪 Testes de Integração Realizados
 - `test/integration/api/v1/pix_keys_test.rb`:
-  - Testes de criação (201 Created), erros de validação/duplicidade (422 Unprocessable Entity), conta não encontrada (404 Not Found), listagem de ativas (200 OK) e cancelamento (200 OK).
-- **Resultado Final**: 59 testes executados, 155 asserções com 0 falhas e 0 erros.
+  - Testes de criação (201 Created), erros de validação/duplicidade (422 Unprocessable Entity), conta inativa (422 Unprocessable Entity), conta não encontrada (404 Not Found), listagem de ativas (200 OK), cancelamento (204 No Content) e tentativa de cancelamento de chave já cancelada (422 Unprocessable Entity).
+- **Resultado Final**: 65 testes executados, 168 asserções com 0 falhas e 0 erros.

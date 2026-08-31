@@ -47,12 +47,40 @@ class PixKeyTest < ActiveSupport::TestCase
 
     sixth_key = PixKey.new(account: @account, key_type: "email", key_value: "key6@test.com")
     assert_not sixth_key.valid?
-    assert_includes sixth_key.errors[:base], "Maximum of 5 active PIX keys per account reached"
+    assert_includes sixth_key.errors[:base], "maximum of 5 active PIX keys per account reached"
   end
 
   test "normalizes email to lowercase" do
     pix_key = PixKey.new(account: @account, key_type: "email", key_value: "USER@EXAMPLE.COM")
     pix_key.valid?
     assert_equal "user@example.com", pix_key.key_value
+  end
+
+  test "invalid when account is not active on create" do
+    @account.update!(status: "closed")
+    pix_key = PixKey.new(account: @account, key_type: "email", key_value: "inactive@example.com")
+    assert_not pix_key.valid?
+    assert_includes pix_key.errors[:account], "must be active to register a PIX key"
+  end
+
+  test "invalid when active key already exists with same value" do
+    PixKey.create!(account: @account, key_type: "email", key_value: "unique@example.com")
+    duplicate_key = PixKey.new(account: @account, key_type: "email", key_value: "unique@example.com")
+
+    assert_not duplicate_key.valid?
+    assert_includes duplicate_key.errors[:key_value], "is already registered"
+  end
+
+  test "valid with matching CNPJ key for account owner" do
+    @user.update!(doc_id: "04252011000110") # valid CNPJ
+    pix_key = PixKey.new(account: @account, key_type: "cnpj", key_value: "04252011000110")
+    assert pix_key.valid?
+  end
+
+  test "invalid when CNPJ key does not match account owner" do
+    @user.update!(doc_id: "04252011000110") # valid CNPJ
+    pix_key = PixKey.new(account: @account, key_type: "cnpj", key_value: "11222333000181") # different valid CNPJ
+    assert_not pix_key.valid?
+    assert_includes pix_key.errors[:key_value].join, "must match account owner's CNPJ"
   end
 end
