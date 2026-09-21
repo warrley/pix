@@ -53,13 +53,13 @@ class PixKey < ApplicationRecord
     return if key_value.blank? || key_type.blank?
 
     valid = case key_type
-            when "cpf"    then Pix::KeyValidatorService.valid_cpf?(key_value)
-            when "cnpj"   then Pix::KeyValidatorService.valid_cnpj?(key_value)
-            when "email"  then Pix::KeyValidatorService.valid_email?(key_value)
-            when "phone"  then Pix::KeyValidatorService.valid_phone?(key_value)
-            when "random" then key_value.length == 36 # UUID format
-            else false
-            end
+    when "cpf"    then Pix::KeyValidatorService.valid_cpf?(key_value)
+    when "cnpj"   then Pix::KeyValidatorService.valid_cnpj?(key_value)
+    when "email"  then Pix::KeyValidatorService.valid_email?(key_value)
+    when "phone"  then Pix::KeyValidatorService.valid_phone?(key_value)
+    when "random" then key_value.length == 36 # UUID format
+    else false
+    end
 
     errors.add(:key_value, "is invalid for type #{key_type}") unless valid
   end
