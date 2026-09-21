@@ -10,6 +10,10 @@ Rails.application.routes.draw do
       resources :users, only: [ :create, :show, :update, :destroy ] do
         resources :accounts, only: [ :index ]
       end
+      get "users/:user_id/reports/transactions",
+        to: "user_reports#transactions",
+        as: :user_transactions_report,
+        defaults: { format: :json }
       resources :accounts, only: [ :create, :show, :destroy ] do
         resources :pix_keys, only: [ :create, :index ]
       end
