@@ -1,6 +1,8 @@
 module Api
   module V1
     class UserReportsController < ApplicationController
+      include ActionController::MimeResponds
+
       def transactions
         report = Reports::UserTransactionsService.call(user_id: params[:user_id])
 

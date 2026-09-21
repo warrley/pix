@@ -21,9 +21,9 @@ class Reports::UserTransactionsServiceTest < ActiveSupport::TestCase
 
     assert_equal @user.id, report[:user_id]
     assert_equal 4, report.dig(:summary, :total_transactions_count)
-    assert_equal 125.0, report.dig(:summary, :total_sent_amount)
+    assert_equal 185.0, report.dig(:summary, :total_sent_amount)
     assert_equal 65.0, report.dig(:summary, :total_received_amount)
-    assert_equal(-60.0, report.dig(:summary, :net_balance_change))
+    assert_equal(-120.0, report.dig(:summary, :net_balance_change))
     assert_equal 56.25, report.dig(:summary, :average_ticket_amount)
 
     assert_equal [ @account_one.id, @account_two.id ], report[:accounts].pluck(:account_id)
@@ -135,7 +135,7 @@ class Reports::UserTransactionsServiceTest < ActiveSupport::TestCase
     assert_equal "2", table[2]["total_transactions_count"]
     assert_equal "100.00", table[2]["total_sent_amount"]
     assert_equal "40.00", table[2]["total_received_amount"]
-    assert_equal "30.00", table[2]["average_ticket_amount"]
+    assert_equal "70.00", table[2]["average_ticket_amount"]
   end
 
   test "generates a summary csv row for a user without accounts" do

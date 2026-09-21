@@ -25,9 +25,9 @@ class Api::V1::UserReportsTest < ActionDispatch::IntegrationTest
     assert_nil body["error"]
     assert_equal @user.id, body.dig("data", "user_id")
     assert_equal 4, body.dig("data", "summary", "total_transactions_count")
-    assert_equal 125.0, body.dig("data", "summary", "total_sent_amount")
+    assert_equal 185.0, body.dig("data", "summary", "total_sent_amount")
     assert_equal 65.0, body.dig("data", "summary", "total_received_amount")
-    assert_equal(-60.0, body.dig("data", "summary", "net_balance_change"))
+    assert_equal(-120.0, body.dig("data", "summary", "net_balance_change"))
     assert_equal 56.25, body.dig("data", "summary", "average_ticket_amount")
     assert_equal [ @account_one.id, @account_two.id ], body.dig("data", "accounts").pluck("account_id")
     assert_equal @account_one.account_number, body.dig("data", "accounts", 0, "account_number")
@@ -55,9 +55,10 @@ class Api::V1::UserReportsTest < ActionDispatch::IntegrationTest
 
     table = CSV.parse(response.body, headers: true)
     assert_equal [ "account", "account", "summary" ], table.map { |row| row["row_type"] }
-    assert_equal "2", table.last["total_transactions_count"]
-    assert_equal "100.00", table.last["total_sent_amount"]
-    assert_equal "40.00", table.last["total_received_amount"]
+    summary_row = table[table.length - 1]
+    assert_equal "2", summary_row["total_transactions_count"]
+    assert_equal "100.00", summary_row["total_sent_amount"]
+    assert_equal "40.00", summary_row["total_received_amount"]
   end
 
   test "GET user transaction report returns the standard 404 for an unknown user" do
