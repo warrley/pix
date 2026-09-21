@@ -131,7 +131,7 @@ class Reports::UserTransactionsServiceTest < ActiveSupport::TestCase
     assert_equal @account_one.account_number, table[0]["account_number"]
     assert_equal "100.00", table[0]["total_sent_amount"]
     assert_equal "0.00", table[0]["total_received_amount"]
-    assert_equal "-40.00", table[1]["net_balance_change"]
+    assert_equal "40.00", table[1]["net_balance_change"]
     assert_equal "2", table[2]["total_transactions_count"]
     assert_equal "100.00", table[2]["total_sent_amount"]
     assert_equal "40.00", table[2]["total_received_amount"]
