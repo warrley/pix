@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_31_172725) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_21_125248) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -25,7 +25,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_31_172725) do
     t.index ["account_number"], name: "index_accounts_on_account_number", unique: true
     t.index ["user_id"], name: "index_accounts_on_user_id"
     t.check_constraint "balance >= 0::numeric", name: "accounts_balance_non_negative"
-    t.check_constraint "status::text = ANY (ARRAY['active'::character varying, 'blocked'::character varying, 'closed'::character varying]::text[])", name: "accounts_status_valid"
+    t.check_constraint "status::text = ANY (ARRAY['active'::character varying::text, 'blocked'::character varying::text, 'closed'::character varying::text])", name: "accounts_status_valid"
   end
 
   create_table "pix_keys", force: :cascade do |t|
@@ -37,12 +37,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_31_172725) do
     t.datetime "updated_at", null: false
     t.index ["account_id"], name: "index_pix_keys_on_account_id"
     t.index ["key_value"], name: "index_pix_keys_on_key_value_active", unique: true, where: "((status)::text = 'active'::text)"
-    t.check_constraint "key_type::text = ANY (ARRAY['cpf'::character varying, 'cnpj'::character varying, 'email'::character varying, 'phone'::character varying, 'random'::character varying]::text[])", name: "pix_keys_key_type_valid"
-    t.check_constraint "status::text = ANY (ARRAY['active'::character varying, 'suspended'::character varying, 'cancelled'::character varying]::text[])", name: "pix_keys_status_valid"
+    t.check_constraint "key_type::text = ANY (ARRAY['cpf'::character varying::text, 'cnpj'::character varying::text, 'email'::character varying::text, 'phone'::character varying::text, 'random'::character varying::text])", name: "pix_keys_key_type_valid"
+    t.check_constraint "status::text = ANY (ARRAY['active'::character varying::text, 'suspended'::character varying::text, 'cancelled'::character varying::text])", name: "pix_keys_status_valid"
   end
 
   create_table "transactions", force: :cascade do |t|
     t.decimal "amount", precision: 14, scale: 2, null: false
+    t.datetime "cancelled_at"
     t.datetime "created_at", null: false
     t.string "description", limit: 140
     t.bigint "destination_account_id", null: false
@@ -57,7 +58,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_31_172725) do
     t.index ["source_account_id"], name: "index_transactions_on_source_account_id"
     t.check_constraint "amount > 0::numeric", name: "transactions_amount_positive"
     t.check_constraint "source_account_id <> destination_account_id", name: "transactions_no_self_transfer"
-    t.check_constraint "status::text = ANY (ARRAY['processing'::character varying, 'completed'::character varying, 'failed'::character varying, 'cancelled'::character varying]::text[])", name: "transactions_status_valid"
+    t.check_constraint "status::text = ANY (ARRAY['processing'::character varying::text, 'completed'::character varying::text, 'failed'::character varying::text, 'cancelled'::character varying::text])", name: "transactions_status_valid"
   end
 
   create_table "users", force: :cascade do |t|
