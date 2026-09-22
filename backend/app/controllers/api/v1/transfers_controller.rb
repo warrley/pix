@@ -27,9 +27,9 @@ module Api
       def show
         transaction = if params[:id].to_s.start_with?("E")
                         Transaction.find_by(end_to_end_id: params[:id])
-                      else
+        else
                         Transaction.find_by(id: params[:id])
-                      end
+        end
 
         if transaction
           render_success(receipt_data(transaction))

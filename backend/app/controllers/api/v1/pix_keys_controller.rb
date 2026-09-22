@@ -1,8 +1,8 @@
 module Api
   module V1
     class PixKeysController < ApplicationController
-      before_action :set_account, only: [:create, :index]
-      before_action :set_pix_key, only: [:destroy]
+      before_action :set_account, only: [ :create, :index ]
+      before_action :set_pix_key, only: [ :destroy ]
 
       def create
         @pix_key = @account.pix_keys.build(pix_key_params)

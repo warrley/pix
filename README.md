@@ -4,7 +4,6 @@ This is our university project for Configuration Management. We are building a s
 
 ## Project Structure
 - `/backend`: Ruby on Rails API
-- `/frontend`: Next.js Web App
 
 ## How to run
 

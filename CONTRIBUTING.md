@@ -11,7 +11,7 @@ This is just the convention guide for our team so we don't break the code and pa
 We are using basic [conventional commits](https://www.conventionalcommits.org/en/v1.0.0/). Keep it simple:
 `type(scope): message`
 
-The `(scope)` helps show what part of the project you changed, like `(frontend)` or `(backend)`.
+The `(scope)` helps show what part of the project you changed, like `(backend)`.
 
 Main types you can use:
 - `feat`: for new things
@@ -20,7 +20,7 @@ Main types you can use:
 - `chore`: for config stuff
 
 Example:
-`feat(frontend): create login page`
+`feat(backend): create users table`
 
 ## Pull Requests
 1. Push your branch.

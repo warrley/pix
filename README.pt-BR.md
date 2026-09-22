@@ -4,7 +4,6 @@ Este é o nosso projeto universitário para a disciplina de Gestão de Configura
 
 ## Estrutura do Projeto
 - `/backend`: API em Ruby on Rails
-- `/frontend`: Aplicação Web em Next.js
 
 ## Como executar
 
