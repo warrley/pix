@@ -1,15 +1,22 @@
 module Pix
   class AccountStatementQuery
-    def self.call(account_id:, page: 1, per_page: 20, start_date: nil, end_date: nil)
-      new(account_id: account_id, page: page, per_page: per_page, start_date: start_date, end_date: end_date).call
+    STATUS_FILTERS = {
+      "completed" => "completed",
+      "cancelled" => "cancelled",
+      "pending" => "processing"
+    }.freeze
+
+    def self.call(account_id:, page: 1, per_page: 20, start_date: nil, end_date: nil, status: nil)
+      new(account_id: account_id, page: page, per_page: per_page, start_date: start_date, end_date: end_date, status: status).call
     end
 
-    def initialize(account_id:, page:, per_page:, start_date: nil, end_date: nil)
+    def initialize(account_id:, page:, per_page:, start_date: nil, end_date: nil, status: nil)
       @account_id = account_id
-      @page = [ page.to_i, 1 ].max
-      @per_page = [ [ per_page.to_i, 1 ].max, 100 ].min # max de 100 por regra da issue
+      @page = [ (page.presence || 1).to_i, 1 ].max
+      @per_page = [ [ (per_page.presence || 20).to_i, 1 ].max, 100 ].min # max de 100 por regra da issue
       @start_time = parse_date_boundary(start_date, beginning: true)
       @end_time = parse_date_boundary(end_date, beginning: false)
+      @status = parse_status(status)
 
       if @start_time && @end_time && @start_time > @end_time
         raise ArgumentError, "start_date must be before or equal to end_date"
@@ -23,6 +30,7 @@ module Pix
                             .order(created_at: :desc)
       relation = relation.where("created_at >= ?", @start_time) if @start_time
       relation = relation.where("created_at <= ?", @end_time) if @end_time
+      relation = relation.where(status: @status) if @status
 
       total_count = relation.count
       total_pages = (total_count.to_f / @per_page).ceil
@@ -75,6 +83,14 @@ module Pix
       (beginning ? utc_date.beginning_of_day : utc_date.end_of_day).utc
     rescue ArgumentError, Date::Error
       raise ArgumentError, "invalid date: #{value}"
+    end
+
+    def parse_status(value)
+      return if value.blank?
+
+      STATUS_FILTERS[value.to_s].tap do |status|
+        raise ArgumentError, "invalid status: #{value}" unless status
+      end
     end
 
     def mask_doc_id(doc_id)
