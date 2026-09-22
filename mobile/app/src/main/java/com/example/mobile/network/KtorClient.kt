@@ -4,6 +4,7 @@ import com.example.mobile.BuildConfig
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.engine.android.Android
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.plugins.logging.DEFAULT
@@ -16,7 +17,8 @@ import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 
 object KtorClient {
-    private const val TIMEOUT = 30_000
+    // Reduced timeout to 5 seconds as requested
+    private const val TIMEOUT_MILLIS = 5_000L
 
     fun createHttpClient(engine: HttpClientEngine = Android.create()): HttpClient {
         return HttpClient(engine) {
@@ -26,6 +28,12 @@ object KtorClient {
                     isLenient = true
                     ignoreUnknownKeys = true
                 })
+            }
+
+            install(HttpTimeout) {
+                requestTimeoutMillis = TIMEOUT_MILLIS
+                connectTimeoutMillis = TIMEOUT_MILLIS
+                socketTimeoutMillis = TIMEOUT_MILLIS
             }
 
             install(Logging) {
@@ -40,8 +48,8 @@ object KtorClient {
 
             engine {
                 if (this is io.ktor.client.engine.android.AndroidEngineConfig) {
-                    connectTimeout = TIMEOUT
-                    socketTimeout = TIMEOUT
+                    connectTimeout = TIMEOUT_MILLIS.toInt()
+                    socketTimeout = TIMEOUT_MILLIS.toInt()
                 }
             }
         }
