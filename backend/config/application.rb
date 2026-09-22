@@ -28,5 +28,16 @@ module Backend
     # Middleware like session, flash, cookies can be added back manually.
     # Skip views, helpers and assets when generating a new resource.
     config.api_only = true
+
+    # Allowed hosts for Host Authorization
+    if Rails.env.test? || Rails.env.development?
+      config.hosts.clear
+    elsif ENV["ALLOWED_HOSTS"].present?
+      ENV["ALLOWED_HOSTS"].split(",").each do |host|
+        config.hosts << host.strip
+      end
+    else
+      config.hosts << "pix.warley.xyz"
+    end
   end
 end
