@@ -28,7 +28,7 @@ module Pix
     end
 
     test "cancels pending transaction and restores source account balance" do
-      result = CancelTransferService.call(transaction_id: @transaction.id)
+      result = CancelTransferService.call(transaction_id: @transaction.id, reason: "Customer requested cancellation")
 
       assert result.success?
       assert_equal "cancelled", result.transaction.status
@@ -37,6 +37,11 @@ module Pix
       @source.reload
       assert_equal 500.0, @source.balance
       assert_enqueued_with(job: TransactionNotificationJob, args: [ @transaction.id, "cancelled" ])
+
+      event = @transaction.transaction_events.order(:id).last
+      assert_equal "processing", event.previous_status
+      assert_equal "cancelled", event.current_status
+      assert_equal "Customer requested cancellation", event.reason
     end
 
     test "raises error when attempting to cancel completed transaction" do

@@ -6,8 +6,9 @@ module Pix
       new(...).call
     end
 
-    def initialize(transaction_id:)
+    def initialize(transaction_id:, reason: nil)
       @transaction_id = transaction_id
+      @reason = reason.presence || "Cancellation requested"
     end
 
     def call
@@ -34,6 +35,17 @@ module Pix
           transaction.update!(
             status: :cancelled,
             cancelled_at: Time.current
+          )
+
+          TransactionEvent.create!(
+            transaction_record: transaction,
+            previous_status: "processing",
+            current_status: "cancelled",
+            amount: transaction.amount,
+            source_account: transaction.source_account,
+            destination_account: transaction.destination_account,
+            reason: @reason,
+            created_at: Time.current
           )
         end
       rescue StandardError => e

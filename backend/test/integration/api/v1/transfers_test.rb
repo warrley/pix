@@ -32,6 +32,11 @@ class Api::V1::TransfersTest < ActionDispatch::IntegrationTest
     assert_equal @dest_account.id, body.dig("data", "receiver", "account_id")
     assert_equal 450.00, @source_account.reload.balance
     assert_equal 150.00, @dest_account.reload.balance
+
+    transaction = Transaction.find(body.dig("data", "id"))
+    events = transaction.transaction_events.order(:id)
+    assert_equal [ "created", "completed" ], events.map(&:current_status)
+    assert_equal [ nil, "created" ], events.map(&:previous_status)
   end
 
   test "POST /api/v1/transfers returns 422 when transfer fails" do
