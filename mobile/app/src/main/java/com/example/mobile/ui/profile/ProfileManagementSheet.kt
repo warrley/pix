@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -92,19 +93,36 @@ fun ProfileManagementSheet(
     var showCreateAccountDialog by remember { mutableStateOf(false) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
 
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val maxSheetHeight = (configuration.screenHeightDp * 0.72f).dp
+    val scrollState = rememberScrollState()
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = Color.White,
+        dragHandle = {
+            Box(
+                modifier = Modifier
+                    .padding(top = 12.dp, bottom = 8.dp)
+                    .size(width = 36.dp, height = 4.dp)
+                    .clip(CircleShape)
+                    .background(RuDivider)
+            )
+        },
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-                .padding(bottom = 32.dp)
-                .verticalScroll(rememberScrollState())
+        androidx.compose.runtime.CompositionLocalProvider(
+            androidx.compose.foundation.LocalOverscrollFactory provides null
         ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = maxSheetHeight)
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 32.dp)
+                    .verticalScroll(scrollState)
+            ) {
             // Header with Ruby Gem branding
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -357,6 +375,7 @@ fun ProfileManagementSheet(
             }
         }
     }
+}
 
     // --- Dialogs ---
 
