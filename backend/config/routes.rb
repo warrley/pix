@@ -16,9 +16,14 @@ Rails.application.routes.draw do
         defaults: { format: :json }
       resources :accounts, only: [ :create, :show, :destroy ] do
         resources :pix_keys, only: [ :create, :index ]
+        resources :transfers, only: [ :index ], controller: "account_transfers"
       end
       resources :pix_keys, only: [ :destroy ]
-      resources :transfers, only: [ :create, :show ]
+      resources :transfers, only: [ :create, :show ] do
+        member do
+          post :cancel
+        end
+      end
     end
   end
 
