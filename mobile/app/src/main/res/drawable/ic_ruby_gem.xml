@@ -1,0 +1,62 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+
+    <!-- Outer gem background / shadow -->
+    <path
+        android:pathData="M30,16 L70,16 L88,38 L50,88 L12,38 Z"
+        android:fillColor="#800015" />
+
+    <!-- Table facet (top bright flat) -->
+    <path
+        android:pathData="M36,16 L64,16 L57,34 L43,34 Z"
+        android:fillColor="#FF5277" />
+
+    <!-- Center triangle reflection -->
+    <path
+        android:pathData="M43,34 L57,34 L50,44 Z"
+        android:fillColor="#FF85A0" />
+
+    <!-- Top-left upper facet -->
+    <path
+        android:pathData="M30,16 L36,16 L43,34 L12,38 Z"
+        android:fillColor="#FF2A55" />
+
+    <!-- Top-right upper facet -->
+    <path
+        android:pathData="M64,16 L70,16 L88,38 L57,34 Z"
+        android:fillColor="#E6002E" />
+
+    <!-- Middle-left facet -->
+    <path
+        android:pathData="M12,38 L43,34 L50,44 L32,64 Z"
+        android:fillColor="#CC0028" />
+
+    <!-- Middle-right facet -->
+    <path
+        android:pathData="M88,38 L57,34 L50,44 L68,64 Z"
+        android:fillColor="#B30022" />
+
+    <!-- Bottom center pavilion facet -->
+    <path
+        android:pathData="M50,44 L32,64 L50,88 L68,64 Z"
+        android:fillColor="#99001A" />
+
+    <!-- Bottom left facet -->
+    <path
+        android:pathData="M12,38 L32,64 L50,88 Z"
+        android:fillColor="#800015" />
+
+    <!-- Bottom right facet -->
+    <path
+        android:pathData="M88,38 L68,64 L50,88 Z"
+        android:fillColor="#5A000E" />
+
+    <!-- Jewel sparkle star at top left edge -->
+    <path
+        android:pathData="M32,18 L34,23 L39,25 L34,27 L32,32 L30,27 L25,25 L30,23 Z"
+        android:fillColor="#FFFFFF" />
+
+</vector>

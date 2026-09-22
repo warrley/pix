@@ -11,11 +11,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -26,10 +29,10 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.CreditCard
-import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.NorthEast
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SouthWest
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -40,10 +43,8 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -61,6 +62,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -69,17 +71,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mobile.model.AccountResponse
-import com.example.mobile.model.UserResponse
+import com.example.mobile.ui.components.RuBankBrandBadge
+import com.example.mobile.ui.components.RubyGemIcon
 import com.example.mobile.ui.profile.ProfileManagementSheet
-import com.example.mobile.ui.theme.NuActionCircle
-import com.example.mobile.ui.theme.NuDivider
-import com.example.mobile.ui.theme.NuError
-import com.example.mobile.ui.theme.NuPurple
-import com.example.mobile.ui.theme.NuPurpleDark
-import com.example.mobile.ui.theme.NuPurpleLight
-import com.example.mobile.ui.theme.NuSuccess
-import com.example.mobile.ui.theme.NuTextPrimary
-import com.example.mobile.ui.theme.NuTextSecondary
+import com.example.mobile.ui.theme.RuActionCircle
+import com.example.mobile.ui.theme.RuError
+import com.example.mobile.ui.theme.RuRubyDark
+import com.example.mobile.ui.theme.RuRubyLight
+import com.example.mobile.ui.theme.RuRubyRed
+import com.example.mobile.ui.theme.RuSuccess
+import com.example.mobile.ui.theme.RuTextPrimary
+import com.example.mobile.ui.theme.RuTextSecondary
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
@@ -109,16 +111,18 @@ fun AccountScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         modifier = modifier.fillMaxSize()
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(bottom = paddingValues.calculateBottomPadding())
+                .navigationBarsPadding()
                 .background(Color.White)
         ) {
-            // Nubank Header (Always visible)
-            NubankHeader(
+            // RuBank Ruby Red Header sitting right at the top
+            RuBankHeader(
                 userName = successState?.user?.name ?: "Warley",
                 userInitial = successState?.user?.name?.firstOrNull()?.uppercase() ?: "W",
                 isBalanceVisible = successState?.isBalanceVisible ?: true,
@@ -126,7 +130,7 @@ fun AccountScreen(
                 onAvatarClick = { showProfileSheet = true },
                 onHelpClick = {
                     coroutineScope.launch {
-                        snackbarHostState.showSnackbar("PIX App — Gestão de Configuração (UFC)")
+                        snackbarHostState.showSnackbar("RuBank — Sistema PIX com Backend Ruby (UFC)")
                     }
                 }
             )
@@ -150,7 +154,6 @@ fun AccountScreen(
                         account = state.account,
                         isBalanceVisible = state.isBalanceVisible,
                         onRefresh = { viewModel.loadAccount(state.account.id) },
-                        onOpenProfile = { showProfileSheet = true },
                         modifier = Modifier
                             .fillMaxSize()
                             .verticalScroll(rememberScrollState())
@@ -160,7 +163,7 @@ fun AccountScreen(
         }
     }
 
-    // Profile & Account Management BottomSheet
+    // Profile & Account Management BottomSheet (triggered exclusively by clicking profile avatar)
     if (showProfileSheet && successState != null) {
         ProfileManagementSheet(
             sheetState = sheetState,
@@ -204,7 +207,7 @@ fun AccountScreen(
 }
 
 @Composable
-private fun NubankHeader(
+private fun RuBankHeader(
     userName: String,
     userInitial: String,
     isBalanceVisible: Boolean,
@@ -212,36 +215,77 @@ private fun NubankHeader(
     onAvatarClick: () -> Unit,
     onHelpClick: () -> Unit
 ) {
-    Surface(
-        color = NuPurple,
-        modifier = Modifier.fillMaxWidth()
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(RuRubyRed, RuRubyDark)
+                )
+            )
+            .statusBarsPadding()
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 20.dp)
+                .padding(horizontal = 20.dp, vertical = 14.dp)
         ) {
+            // Top Row: User Avatar Button, RuBank Brand with Ruby gem in center, Action Icons on right
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // User Avatar Circle (clicking opens profile and user management)
+                // Interactive User Avatar Circle with settings badge (clicking opens profile and user management)
                 Box(
                     modifier = Modifier
-                        .size(44.dp)
                         .clip(CircleShape)
-                        .background(NuPurpleDark)
-                        .clickable(onClick = onAvatarClick),
-                    contentAlignment = Alignment.Center
+                        .clickable(onClick = onAvatarClick)
                 ) {
-                    Text(
-                        text = userInitial,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.2f))
+                            .padding(2.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape)
+                                .background(RuRubyDark),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = userInitial,
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp
+                            )
+                        }
+                    }
+
+                    // Settings gear badge overlay indicating management
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .size(16.dp)
+                            .clip(CircleShape)
+                            .background(Color.White)
+                            .padding(2.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Gerenciar Perfil e Contas",
+                            tint = RuRubyRed,
+                            modifier = Modifier.size(11.dp)
+                        )
+                    }
                 }
+
+                // RuBank Ruby Brand Badge
+                RuBankBrandBadge()
 
                 // Header Action Icons
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -263,14 +307,41 @@ private fun NubankHeader(
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
-            Text(
-                text = "Olá, $userName",
-                color = Color.White,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
-            )
+            // Greeting row with profile click hint
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable(onClick = onAvatarClick)
+                    .padding(vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text(
+                        text = "Olá, $userName",
+                        color = Color.White,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Toque no perfil para gerenciar contas",
+                        color = Color.White.copy(alpha = 0.82f),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Normal
+                    )
+                }
+
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = "Abrir Perfil",
+                    tint = Color.White.copy(alpha = 0.75f),
+                    modifier = Modifier.size(16.dp)
+                )
+            }
         }
     }
 }
@@ -280,7 +351,6 @@ private fun AccountSuccessContent(
     account: AccountResponse,
     isBalanceVisible: Boolean,
     onRefresh: () -> Unit,
-    onOpenProfile: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.padding(vertical = 16.dp)) {
@@ -296,16 +366,22 @@ private fun AccountSuccessContent(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Conta",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = NuTextPrimary
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    RubyGemIcon(size = 18.dp)
+                    Text(
+                        text = "Conta RuBank",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = RuTextPrimary
+                    )
+                }
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                     contentDescription = "Ver extrato",
-                    tint = NuTextSecondary,
+                    tint = RuTextSecondary,
                     modifier = Modifier.size(16.dp)
                 )
             }
@@ -320,18 +396,18 @@ private fun AccountSuccessContent(
             ) {
                 Text(
                     text = formattedBalance,
-                    fontSize = 24.sp,
+                    fontSize = 26.sp,
                     fontWeight = FontWeight.Bold,
-                    color = NuTextPrimary
+                    color = RuTextPrimary
                 )
             }
 
             if (!isBalanceVisible) {
                 Text(
                     text = "••••",
-                    fontSize = 24.sp,
+                    fontSize = 26.sp,
                     fontWeight = FontWeight.Bold,
-                    color = NuTextSecondary
+                    color = RuTextSecondary
                 )
             }
 
@@ -345,16 +421,16 @@ private fun AccountSuccessContent(
                 Text(
                     text = "Ag. ${account.agency_number} • C/C ${account.account_number}",
                     fontSize = 13.sp,
-                    color = NuTextSecondary
+                    color = RuTextSecondary
                 )
 
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = if (account.status == "active") NuSuccess.copy(alpha = 0.15f) else NuError.copy(alpha = 0.15f)
+                    color = if (account.status == "active") RuSuccess.copy(alpha = 0.15f) else RuError.copy(alpha = 0.15f)
                 ) {
                     Text(
                         text = if (account.status == "active") "Ativa" else account.status.replaceFirstChar { it.uppercase() },
-                        color = if (account.status == "active") NuSuccess else NuError,
+                        color = if (account.status == "active") RuSuccess else RuError,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
@@ -363,7 +439,7 @@ private fun AccountSuccessContent(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(18.dp))
 
         // Quick Action Buttons (horizontal scroll)
         Row(
@@ -373,22 +449,22 @@ private fun AccountSuccessContent(
                 .padding(horizontal = 20.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            NubankActionButton(
+            RuBankActionButton(
                 icon = Icons.Default.QrCode,
                 label = "Área Pix",
                 onClick = {}
             )
-            NubankActionButton(
+            RuBankActionButton(
                 icon = Icons.Default.NorthEast,
                 label = "Transferir",
                 onClick = {}
             )
-            NubankActionButton(
+            RuBankActionButton(
                 icon = Icons.Default.SouthWest,
                 label = "Depositar",
                 onClick = {}
             )
-            NubankActionButton(
+            RuBankActionButton(
                 icon = Icons.AutoMirrored.Filled.ReceiptLong,
                 label = "Extrato",
                 onClick = {}
@@ -397,14 +473,13 @@ private fun AccountSuccessContent(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Profile & Accounts Management Card
+        // My Cards Container (RuBank Ruby Card)
         Card(
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = NuActionCircle),
+            colors = CardDefaults.cardColors(containerColor = RuActionCircle),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
-                .clickable(onClick = onOpenProfile)
         ) {
             Row(
                 modifier = Modifier
@@ -413,96 +488,80 @@ private fun AccountSuccessContent(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.ManageAccounts,
-                    contentDescription = null,
-                    tint = NuPurple,
-                    modifier = Modifier.size(28.dp)
-                )
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(RuRubyLight),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CreditCard,
+                        contentDescription = null,
+                        tint = RuRubyRed,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Gerenciar Perfil e Contas",
-                        fontWeight = FontWeight.Bold,
+                        text = "Cartão Ruby RuBank",
+                        fontWeight = FontWeight.SemiBold,
                         fontSize = 14.sp,
-                        color = NuTextPrimary
+                        color = RuTextPrimary
                     )
                     Text(
-                        text = "Cadastrar usuário, alterar dados ou abrir nova conta",
+                        text = "Cartão virtual ativo para compras online",
                         fontSize = 12.sp,
-                        color = NuTextSecondary
+                        color = RuTextSecondary
                     )
                 }
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                     contentDescription = null,
-                    tint = NuTextSecondary,
+                    tint = RuTextSecondary,
                     modifier = Modifier.size(16.dp)
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // My Cards Container
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = NuActionCircle),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.CreditCard,
-                    contentDescription = null,
-                    tint = NuPurple,
-                    modifier = Modifier.size(24.dp)
-                )
-                Text(
-                    text = "Meus cartões",
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 14.sp,
-                    color = NuTextPrimary
                 )
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Security / Antifraud Info Banner
+        // Security / Antifraud Info Banner (Ruby styled)
         Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp),
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = NuPurpleLight)
+            colors = CardDefaults.cardColors(containerColor = RuRubyLight)
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "Segurança no Pix",
-                    fontWeight = FontWeight.Bold,
-                    color = NuPurple,
-                    fontSize = 14.sp
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Suas transações Pix contam com limites de segurança e análise antifraude em tempo real.",
-                    color = NuTextPrimary,
-                    fontSize = 13.sp
-                )
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                RubyGemIcon(size = 28.dp)
+                Column {
+                    Text(
+                        text = "Segurança RuBank",
+                        fontWeight = FontWeight.Bold,
+                        color = RuRubyRed,
+                        fontSize = 14.sp
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Suas operações Pix contam com infraestrutura de alta velocidade em Ruby, limites de segurança e análise antifraude em tempo real.",
+                        color = RuTextPrimary,
+                        fontSize = 13.sp,
+                        lineHeight = 18.sp
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun NubankActionButton(
+private fun RuBankActionButton(
     icon: ImageVector,
     label: String,
     onClick: () -> Unit
@@ -517,13 +576,13 @@ private fun NubankActionButton(
             modifier = Modifier
                 .size(68.dp)
                 .clip(CircleShape)
-                .background(NuActionCircle),
+                .background(RuActionCircle),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = label,
-                tint = NuTextPrimary,
+                tint = RuTextPrimary,
                 modifier = Modifier.size(24.dp)
             )
         }
@@ -532,7 +591,7 @@ private fun NubankActionButton(
             text = label,
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
-            color = NuTextPrimary
+            color = RuTextPrimary
         )
     }
 }
@@ -547,14 +606,15 @@ private fun LoadingState(modifier: Modifier = Modifier) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            RubyGemIcon(size = 40.dp)
             CircularProgressIndicator(
-                color = NuPurple,
+                color = RuRubyRed,
                 strokeWidth = 3.dp,
                 modifier = Modifier.size(48.dp)
             )
             Text(
-                text = "Carregando informações da conta...",
-                color = NuTextSecondary,
+                text = "Carregando dados da conta RuBank...",
+                color = RuTextSecondary,
                 fontSize = 14.sp
             )
         }
@@ -576,7 +636,7 @@ private fun ErrorState(
     ) {
         Card(
             shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = NuActionCircle),
+            colors = CardDefaults.cardColors(containerColor = RuActionCircle),
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(
@@ -588,22 +648,26 @@ private fun ErrorState(
                     modifier = Modifier
                         .size(56.dp)
                         .clip(CircleShape)
-                        .background(if (isNotFound) NuPurpleLight.copy(alpha = 0.35f) else NuError.copy(alpha = 0.12f)),
+                        .background(if (isNotFound) RuRubyLight else RuError.copy(alpha = 0.12f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.WarningAmber,
-                        contentDescription = "Erro",
-                        tint = if (isNotFound) NuPurple else NuError,
-                        modifier = Modifier.size(32.dp)
-                    )
+                    if (isNotFound) {
+                        RubyGemIcon(size = 32.dp)
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.WarningAmber,
+                            contentDescription = "Erro",
+                            tint = RuError,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
                 }
 
                 Text(
                     text = title,
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp,
-                    color = NuTextPrimary,
+                    color = RuTextPrimary,
                     textAlign = TextAlign.Center
                 )
 
@@ -613,7 +677,7 @@ private fun ErrorState(
                     } else {
                         message
                     },
-                    color = NuTextSecondary,
+                    color = RuTextSecondary,
                     fontSize = 14.sp,
                     lineHeight = 20.sp,
                     textAlign = TextAlign.Center
@@ -623,7 +687,7 @@ private fun ErrorState(
 
                 Button(
                     onClick = onRetry,
-                    colors = ButtonDefaults.buttonColors(containerColor = NuPurple),
+                    colors = ButtonDefaults.buttonColors(containerColor = RuRubyRed),
                     shape = RoundedCornerShape(24.dp),
                     modifier = Modifier
                         .fillMaxWidth()

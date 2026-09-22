@@ -1,5 +1,6 @@
 package com.example.mobile.ui.profile
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -24,7 +25,6 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.AlertDialog
@@ -39,7 +39,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -59,15 +58,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.mobile.model.AccountResponse
 import com.example.mobile.model.UserResponse
-import com.example.mobile.ui.theme.NuActionCircle
-import com.example.mobile.ui.theme.NuDivider
-import com.example.mobile.ui.theme.NuError
-import com.example.mobile.ui.theme.NuPurple
-import com.example.mobile.ui.theme.NuPurpleDark
-import com.example.mobile.ui.theme.NuPurpleLight
-import com.example.mobile.ui.theme.NuSuccess
-import com.example.mobile.ui.theme.NuTextPrimary
-import com.example.mobile.ui.theme.NuTextSecondary
+import com.example.mobile.ui.components.RubyGemIcon
+import com.example.mobile.ui.theme.RuActionCircle
+import com.example.mobile.ui.theme.RuDivider
+import com.example.mobile.ui.theme.RuError
+import com.example.mobile.ui.theme.RuRubyDark
+import com.example.mobile.ui.theme.RuRubyLight
+import com.example.mobile.ui.theme.RuRubyRed
+import com.example.mobile.ui.theme.RuSuccess
+import com.example.mobile.ui.theme.RuTextPrimary
+import com.example.mobile.ui.theme.RuTextSecondary
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -84,7 +84,7 @@ fun ProfileManagementSheet(
     onDeleteUser: () -> Unit,
     onCreateAccount: () -> Unit,
     onDeleteAccount: () -> Unit,
-    onSwitchAccount: (Long) -> Unit
+    onSwitchAccount: (accountId: Long) -> Unit
 ) {
     var showCreateUserDialog by remember { mutableStateOf(false) }
     var showEditUserDialog by remember { mutableStateOf(false) }
@@ -105,20 +105,26 @@ fun ProfileManagementSheet(
                 .padding(bottom = 32.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            // Header
+            // Header with Ruby Gem branding
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Perfil e Configurações",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = NuTextPrimary
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    RubyGemIcon(size = 26.dp)
+                    Text(
+                        text = "RuBank • Perfil e Contas",
+                        fontSize = 19.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = RuTextPrimary
+                    )
+                }
                 IconButton(onClick = onDismiss) {
-                    Icon(imageVector = Icons.Default.Close, contentDescription = "Fechar", tint = NuTextSecondary)
+                    Icon(imageVector = Icons.Default.Close, contentDescription = "Fechar", tint = RuTextSecondary)
                 }
             }
 
@@ -127,7 +133,7 @@ fun ProfileManagementSheet(
             // User Info Card
             Card(
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = NuActionCircle),
+                colors = CardDefaults.cardColors(containerColor = RuActionCircle),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -139,7 +145,7 @@ fun ProfileManagementSheet(
                             modifier = Modifier
                                 .size(52.dp)
                                 .clip(CircleShape)
-                                .background(NuPurple),
+                                .background(RuRubyRed),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
@@ -155,32 +161,32 @@ fun ProfileManagementSheet(
                                 text = user?.name ?: "Usuário",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 17.sp,
-                                color = NuTextPrimary
+                                color = RuTextPrimary
                             )
                             Text(
                                 text = user?.email ?: "Sem e-mail cadastrado",
                                 fontSize = 13.sp,
-                                color = NuTextSecondary
+                                color = RuTextSecondary
                             )
                             if (user?.doc_id != null) {
                                 Text(
                                     text = "CPF: ${user.doc_id}",
                                     fontSize = 12.sp,
-                                    color = NuTextSecondary
+                                    color = RuTextSecondary
                                 )
                             }
                             if (user?.phone != null) {
                                 Text(
                                     text = "Tel: ${user.phone}",
                                     fontSize = 12.sp,
-                                    color = NuTextSecondary
+                                    color = RuTextSecondary
                                 )
                             }
                         }
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
-                    HorizontalDivider(color = NuDivider)
+                    HorizontalDivider(color = RuDivider)
                     Spacer(modifier = Modifier.height(12.dp))
 
                     // User Actions Row
@@ -191,32 +197,35 @@ fun ProfileManagementSheet(
                         OutlinedButton(
                             onClick = { showEditUserDialog = true },
                             shape = RoundedCornerShape(20.dp),
+                            border = BorderStroke(1.dp, RuRubyRed.copy(alpha = 0.5f)),
                             modifier = Modifier.weight(1f)
                         ) {
-                            Icon(imageVector = Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp), tint = NuPurple)
+                            Icon(imageVector = Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp), tint = RuRubyRed)
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Editar", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = NuPurple)
+                            Text("Editar", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = RuRubyRed)
                         }
 
                         OutlinedButton(
                             onClick = { showCreateUserDialog = true },
                             shape = RoundedCornerShape(20.dp),
+                            border = BorderStroke(1.dp, RuRubyRed.copy(alpha = 0.5f)),
                             modifier = Modifier.weight(1f)
                         ) {
-                            Icon(imageVector = Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(16.dp), tint = NuPurple)
+                            Icon(imageVector = Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(16.dp), tint = RuRubyRed)
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Novo", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = NuPurple)
+                            Text("Novo", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = RuRubyRed)
                         }
 
                         OutlinedButton(
                             onClick = { showDeleteUserDialog = true },
                             shape = RoundedCornerShape(20.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = NuError),
+                            border = BorderStroke(1.dp, RuError.copy(alpha = 0.5f)),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = RuError),
                             modifier = Modifier.weight(1f)
                         ) {
-                            Icon(imageVector = Icons.Default.DeleteOutline, contentDescription = null, modifier = Modifier.size(16.dp), tint = NuError)
+                            Icon(imageVector = Icons.Default.DeleteOutline, contentDescription = null, modifier = Modifier.size(16.dp), tint = RuError)
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Excluir", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = NuError)
+                            Text("Excluir", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = RuError)
                         }
                     }
                 }
@@ -230,17 +239,23 @@ fun ProfileManagementSheet(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Contas Bancárias",
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = NuTextPrimary
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    RubyGemIcon(size = 18.dp)
+                    Text(
+                        text = "Contas RuBank",
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = RuTextPrimary
+                    )
+                }
 
                 TextButton(onClick = { showCreateAccountDialog = true }) {
-                    Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp), tint = NuPurple)
+                    Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp), tint = RuRubyRed)
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Nova Conta", color = NuPurple, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                    Text("Nova Conta", color = RuRubyRed, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                 }
             }
 
@@ -252,8 +267,9 @@ fun ProfileManagementSheet(
                 Card(
                     shape = RoundedCornerShape(12.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = if (isSelected) NuPurpleLight.copy(alpha = 0.25f) else NuActionCircle
+                        containerColor = if (isSelected) RuRubyLight.copy(alpha = 0.5f) else RuActionCircle
                     ),
+                    border = if (isSelected) BorderStroke(1.5.dp, RuRubyRed) else null,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 4.dp)
@@ -263,8 +279,8 @@ fun ProfileManagementSheet(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(14.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -273,20 +289,20 @@ fun ProfileManagementSheet(
                             Icon(
                                 imageVector = Icons.Default.AccountBalance,
                                 contentDescription = null,
-                                tint = if (isSelected) NuPurple else NuTextSecondary,
+                                tint = if (isSelected) RuRubyRed else RuTextSecondary,
                                 modifier = Modifier.size(24.dp)
                             )
                             Column {
                                 Text(
                                     text = "Ag. ${acc.agency_number} • C/C ${acc.account_number}",
-                                    fontWeight = FontWeight.SemiBold,
+                                    fontWeight = FontWeight.Bold,
                                     fontSize = 14.sp,
-                                    color = NuTextPrimary
+                                    color = RuTextPrimary
                                 )
                                 Text(
                                     text = formatCurrency(acc.balance),
                                     fontSize = 13.sp,
-                                    color = if (isSelected) NuPurple else NuTextSecondary,
+                                    color = if (isSelected) RuRubyRed else RuTextSecondary,
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                                 )
                             }
@@ -294,8 +310,8 @@ fun ProfileManagementSheet(
 
                         if (isSelected) {
                             Surface(
-                                shape = RoundedCornerShape(12.dp),
-                                color = NuSuccess.copy(alpha = 0.15f)
+                                shape = RoundedCornerShape(8.dp),
+                                color = RuSuccess.copy(alpha = 0.15f)
                             ) {
                                 Row(
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -305,12 +321,12 @@ fun ProfileManagementSheet(
                                     Icon(
                                         imageVector = Icons.Default.CheckCircle,
                                         contentDescription = null,
-                                        tint = NuSuccess,
-                                        modifier = Modifier.size(12.dp)
+                                        modifier = Modifier.size(14.dp),
+                                        tint = RuSuccess
                                     )
                                     Text(
-                                        text = "Atual",
-                                        color = NuSuccess,
+                                        text = "Em Uso",
+                                        color = RuSuccess,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 11.sp
                                     )
@@ -321,24 +337,22 @@ fun ProfileManagementSheet(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-            // Close Account Button
+            // Action: Close Current Account
             OutlinedButton(
                 onClick = { showDeleteAccountDialog = true },
-                shape = RoundedCornerShape(24.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = NuError),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp)
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = RuError),
+                border = BorderStroke(1.dp, RuError.copy(alpha = 0.4f)),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Icon(imageVector = Icons.Default.DeleteOutline, contentDescription = null, tint = NuError)
+                Icon(imageVector = Icons.Default.DeleteOutline, contentDescription = null, tint = RuError)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "Encerrar Conta Atual (${currentAccount.account_number})",
-                    color = NuError,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 14.sp
+                    color = RuError,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
         }
@@ -370,12 +384,12 @@ fun ProfileManagementSheet(
     if (showDeleteUserDialog && user != null) {
         AlertDialog(
             onDismissRequest = { showDeleteUserDialog = false },
-            icon = { Icon(Icons.Default.WarningAmber, contentDescription = null, tint = NuError, modifier = Modifier.size(36.dp)) },
-            title = { Text("Excluir Usuário", fontWeight = FontWeight.Bold, color = NuTextPrimary) },
+            icon = { Icon(Icons.Default.WarningAmber, contentDescription = null, tint = RuError, modifier = Modifier.size(36.dp)) },
+            title = { Text("Excluir Usuário", fontWeight = FontWeight.Bold, color = RuTextPrimary) },
             text = {
                 Text(
                     "Tem certeza que deseja remover o usuário ${user.name}? O BACEN exige que todas as contas bancárias vinculadas sejam encerradas antes da exclusão.",
-                    color = NuTextSecondary,
+                    color = RuTextSecondary,
                     fontSize = 14.sp
                 )
             },
@@ -385,14 +399,14 @@ fun ProfileManagementSheet(
                         showDeleteUserDialog = false
                         onDeleteUser()
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = NuError)
+                    colors = ButtonDefaults.buttonColors(containerColor = RuError)
                 ) {
                     Text("Excluir", color = Color.White, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteUserDialog = false }) {
-                    Text("Cancelar", color = NuTextSecondary)
+                    Text("Cancelar", color = RuTextSecondary)
                 }
             }
         )
@@ -401,12 +415,12 @@ fun ProfileManagementSheet(
     if (showCreateAccountDialog) {
         AlertDialog(
             onDismissRequest = { showCreateAccountDialog = false },
-            icon = { Icon(Icons.Default.AccountBalance, contentDescription = null, tint = NuPurple, modifier = Modifier.size(36.dp)) },
-            title = { Text("Criar Nova Conta Bancária", fontWeight = FontWeight.Bold, color = NuTextPrimary) },
+            icon = { RubyGemIcon(size = 36.dp) },
+            title = { Text("Abrir Nova Conta RuBank", fontWeight = FontWeight.Bold, color = RuTextPrimary) },
             text = {
                 Text(
-                    "Deseja abrir uma nova conta corrente vinculada ao seu usuário? A agência padrão será 0001 e o número da conta será gerado automaticamente.",
-                    color = NuTextSecondary,
+                    "Deseja abrir uma nova conta corrente no RuBank vinculada ao seu usuário? A agência padrão será 0001 e o número da conta será gerado automaticamente com backend em Ruby.",
+                    color = RuTextSecondary,
                     fontSize = 14.sp
                 )
             },
@@ -416,14 +430,14 @@ fun ProfileManagementSheet(
                         showCreateAccountDialog = false
                         onCreateAccount()
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = NuPurple)
+                    colors = ButtonDefaults.buttonColors(containerColor = RuRubyRed)
                 ) {
-                    Text("Criar Conta", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text("Abrir Conta", color = Color.White, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showCreateAccountDialog = false }) {
-                    Text("Cancelar", color = NuTextSecondary)
+                    Text("Cancelar", color = RuTextSecondary)
                 }
             }
         )
@@ -432,12 +446,12 @@ fun ProfileManagementSheet(
     if (showDeleteAccountDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteAccountDialog = false },
-            icon = { Icon(Icons.Default.WarningAmber, contentDescription = null, tint = NuError, modifier = Modifier.size(36.dp)) },
-            title = { Text("Encerrar Conta Bancária", fontWeight = FontWeight.Bold, color = NuTextPrimary) },
+            icon = { Icon(Icons.Default.WarningAmber, contentDescription = null, tint = RuError, modifier = Modifier.size(36.dp)) },
+            title = { Text("Encerrar Conta RuBank", fontWeight = FontWeight.Bold, color = RuTextPrimary) },
             text = {
                 Text(
                     "Deseja encerrar a conta nº ${currentAccount.account_number}?\n\nAtenção: O saldo atual deve ser exatamente R$ 0,00. Contas com saldo positivo não podem ser encerradas.",
-                    color = NuTextSecondary,
+                    color = RuTextSecondary,
                     fontSize = 14.sp
                 )
             },
@@ -447,14 +461,14 @@ fun ProfileManagementSheet(
                         showDeleteAccountDialog = false
                         onDeleteAccount()
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = NuError)
+                    colors = ButtonDefaults.buttonColors(containerColor = RuError)
                 ) {
                     Text("Encerrar Conta", color = Color.White, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteAccountDialog = false }) {
-                    Text("Cancelar", color = NuTextSecondary)
+                    Text("Cancelar", color = RuTextSecondary)
                 }
             }
         )
@@ -474,7 +488,8 @@ fun CreateUserDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Cadastrar Usuário", fontWeight = FontWeight.Bold, color = NuTextPrimary) },
+        icon = { RubyGemIcon(size = 32.dp) },
+        title = { Text("Cadastrar Usuário no RuBank", fontWeight = FontWeight.Bold, color = RuTextPrimary) },
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -516,7 +531,7 @@ fun CreateUserDialog(
                 )
 
                 if (errorMessage != null) {
-                    Text(text = errorMessage!!, color = NuError, fontSize = 12.sp)
+                    Text(text = errorMessage!!, color = RuError, fontSize = 12.sp)
                 }
             }
         },
@@ -529,14 +544,14 @@ fun CreateUserDialog(
                     }
                     onConfirm(name, email, docId, phone)
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = NuPurple)
+                colors = ButtonDefaults.buttonColors(containerColor = RuRubyRed)
             ) {
                 Text("Cadastrar", color = Color.White, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancelar", color = NuTextSecondary)
+                Text("Cancelar", color = RuTextSecondary)
             }
         }
     )
@@ -555,7 +570,7 @@ fun EditUserDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Atualizar Dados do Usuário", fontWeight = FontWeight.Bold, color = NuTextPrimary) },
+        title = { Text("Atualizar Dados do Usuário", fontWeight = FontWeight.Bold, color = RuTextPrimary) },
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -589,12 +604,12 @@ fun EditUserDialog(
 
                 Text(
                     text = "CPF: ${currentUser.doc_id} (identificador único)",
-                    color = NuTextSecondary,
+                    color = RuTextSecondary,
                     fontSize = 12.sp
                 )
 
                 if (errorMessage != null) {
-                    Text(text = errorMessage!!, color = NuError, fontSize = 12.sp)
+                    Text(text = errorMessage!!, color = RuError, fontSize = 12.sp)
                 }
             }
         },
@@ -607,14 +622,14 @@ fun EditUserDialog(
                     }
                     onConfirm(name, email, phone)
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = NuPurple)
+                colors = ButtonDefaults.buttonColors(containerColor = RuRubyRed)
             ) {
                 Text("Salvar", color = Color.White, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancelar", color = NuTextSecondary)
+                Text("Cancelar", color = RuTextSecondary)
             }
         }
     )
