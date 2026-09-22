@@ -20,49 +20,54 @@ module Pix
       validation_error = validate_pre_transfer
       if validation_error
         failed_tx = record_failed_transaction(validation_error)
+        enqueue_notification(failed_tx, "failed")
         return Result.new(success?: false, transaction: failed_tx, error: validation_error)
       end
 
       transaction_record = nil
 
-      ActiveRecord::Base.transaction do
-        first_id, second_id = [ @source_account_id, @destination_account.id ].sort
-        locked_first = Account.lock.find(first_id)
-        locked_second = Account.lock.find(second_id)
+      begin
+        ActiveRecord::Base.transaction do
+          first_id, second_id = [ @source_account_id, @destination_account.id ].sort
+          locked_first = Account.lock.find(first_id)
+          locked_second = Account.lock.find(second_id)
 
-        locked_source = (locked_first.id == @source_account_id) ? locked_first : locked_second
-        locked_destination = (locked_first.id == @destination_account.id) ? locked_first : locked_second
+          locked_source = (locked_first.id == @source_account_id) ? locked_first : locked_second
+          locked_destination = (locked_first.id == @destination_account.id) ? locked_first : locked_second
 
-        if locked_source.status != "active"
-          raise StandardError, "Source account is not active"
+          if locked_source.status != "active"
+            raise StandardError, "Source account is not active"
+          end
+
+          if locked_destination.status == "closed"
+            raise StandardError, "Destination account is closed"
+          end
+
+          if locked_source.balance < @amount
+            raise StandardError, "Insufficient funds"
+          end
+
+          locked_source.update!(balance: locked_source.balance - @amount)
+          locked_destination.update!(balance: locked_destination.balance + @amount)
+
+          transaction_record = Transaction.create!(
+            end_to_end_id: @end_to_end_id,
+            source_account: locked_source,
+            destination_account: locked_destination,
+            pix_key_used: @pix_key_raw,
+            amount: @amount,
+            description: @description,
+            status: :completed
+          )
         end
-
-        if locked_destination.status == "closed"
-          raise StandardError, "Destination account is closed"
-        end
-
-        if locked_source.balance < @amount
-          raise StandardError, "Insufficient funds"
-        end
-
-        locked_source.update!(balance: locked_source.balance - @amount)
-        locked_destination.update!(balance: locked_destination.balance + @amount)
-
-        transaction_record = Transaction.create!(
-          end_to_end_id: @end_to_end_id,
-          source_account: locked_source,
-          destination_account: locked_destination,
-          pix_key_used: @pix_key_raw,
-          amount: @amount,
-          description: @description,
-          status: :completed
-        )
+      rescue StandardError => e
+        failed_tx = record_failed_transaction(e.message)
+        enqueue_notification(failed_tx, "failed")
+        return Result.new(success?: false, transaction: failed_tx, error: e.message)
       end
 
+      enqueue_notification(transaction_record, "completed")
       Result.new(success?: true, transaction: transaction_record, error: nil)
-    rescue StandardError => e
-      failed_tx = record_failed_transaction(e.message)
-      Result.new(success?: false, transaction: failed_tx, error: e.message)
     end
 
     private
@@ -122,6 +127,12 @@ module Pix
       timestamp = Time.current.strftime("%Y%m%d%H%M")
       random_chars = SecureRandom.alphanumeric(11).downcase
       "E#{DEFAULT_ISPB}#{timestamp}#{random_chars}"
+    end
+
+    def enqueue_notification(transaction, event_type)
+      return unless transaction
+
+      Notifications::Enqueuer.enqueue(transaction.id, event_type)
     end
   end
 end
