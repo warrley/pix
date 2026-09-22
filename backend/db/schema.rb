@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_21_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_22_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -67,8 +67,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_21_130000) do
     t.bigint "source_account_id", null: false
     t.string "status", limit: 20, default: "processing", null: false
     t.datetime "updated_at", null: false
+    t.index ["destination_account_id", "created_at"], name: "index_transactions_on_destination_account_id_and_created_at"
     t.index ["destination_account_id"], name: "index_transactions_on_destination_account_id"
     t.index ["end_to_end_id"], name: "index_transactions_on_end_to_end_id", unique: true
+    t.index ["source_account_id", "created_at"], name: "index_transactions_on_source_account_id_and_created_at"
     t.index ["source_account_id"], name: "index_transactions_on_source_account_id"
     t.check_constraint "amount > 0::numeric", name: "transactions_amount_positive"
     t.check_constraint "source_account_id <> destination_account_id", name: "transactions_no_self_transfer"
