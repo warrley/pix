@@ -85,9 +85,7 @@ test:
 production:
   primary: &primary_production
     <<: *default
-    database: backend_production
-    username: backend
-    password: <%= ENV["BACKEND_DATABASE_PASSWORD"] %>
+    database: <%= ENV.fetch("POSTGRES_DB", "backend_production") %>
   cache:
     <<: *primary_production
     database: backend_production_cache
