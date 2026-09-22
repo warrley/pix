@@ -158,4 +158,39 @@ class AccountRepositoryTest {
         assertTrue(result.isFailure)
         assertTrue("Expected NetworkException", result.exceptionOrNull() is NetworkException)
     }
+
+    @Test
+    fun createAccount_success_returnsCreatedAccount() = runTest {
+        val jsonResponse = """
+            {
+                "data": {
+                    "id": 5,
+                    "user_id": 1,
+                    "account_number": "654321",
+                    "agency_number": "0001",
+                    "balance": "0.0",
+                    "status": "active"
+                },
+                "error": null
+            }
+        """.trimIndent()
+
+        val mockClient = createMockClient(jsonResponse, HttpStatusCode.Created)
+        val repository = DefaultAccountRepository(KtorAccountRemoteDataSource(mockClient))
+
+        val result = repository.createAccount(1L)
+        assertTrue(result.isSuccess)
+        val account = result.getOrThrow()
+        assertEquals(5L, account.id)
+        assertEquals("654321", account.account_number)
+    }
+
+    @Test
+    fun deleteAccount_success_returnsSuccess() = runTest {
+        val mockClient = createMockClient("", HttpStatusCode.NoContent)
+        val repository = DefaultAccountRepository(KtorAccountRemoteDataSource(mockClient))
+
+        val result = repository.deleteAccount(1L)
+        assertTrue(result.isSuccess)
+    }
 }
