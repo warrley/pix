@@ -18,7 +18,7 @@ class Pix::AccountStatementQueryTest < ActiveSupport::TestCase
       end_to_end_id: "E01011010202609211000abcde123451",
       pix_key_used: "bob@example.com",
       status: :completed,
-      created_at: 2.days.ago
+      created_at: Time.utc(2026, 9, 20, 0, 0, 0)
     )
 
     @tx2 = Transaction.create!(
@@ -28,7 +28,7 @@ class Pix::AccountStatementQueryTest < ActiveSupport::TestCase
       end_to_end_id: "E01011010202609211000abcde123452",
       pix_key_used: "alice@example.com",
       status: :completed,
-      created_at: 1.day.ago
+      created_at: Time.utc(2026, 9, 21, 23, 59, 59)
     )
   end
 
@@ -54,5 +54,45 @@ class Pix::AccountStatementQueryTest < ActiveSupport::TestCase
     assert_equal 2, result[:pagination][:total_count]
     assert_equal 1, result[:pagination][:current_page]
     assert_equal 2, result[:pagination][:total_pages]
+  end
+
+  test "filters transactions by an inclusive date range" do
+    result = Pix::AccountStatementQuery.call(
+      account_id: @account1.id,
+      start_date: "2026-09-20",
+      end_date: "2026-09-21"
+    )
+
+    assert_equal [ @tx2.id, @tx1.id ], result[:transactions].map { |transaction| transaction[:id] }
+  end
+
+  test "filters an ISO 8601 range using UTC boundaries" do
+    result = Pix::AccountStatementQuery.call(
+      account_id: @account1.id,
+      start_date: "2026-09-19T21:00:00-03:00",
+      end_date: "2026-09-20T20:59:59-03:00"
+    )
+
+    assert_equal [ @tx1.id ], result[:transactions].map { |transaction| transaction[:id] }
+  end
+
+  test "rejects invalid dates" do
+    error = assert_raises(ArgumentError) do
+      Pix::AccountStatementQuery.call(account_id: @account1.id, start_date: "2026-99-99")
+    end
+
+    assert_equal "invalid date: 2026-99-99", error.message
+  end
+
+  test "rejects a date range whose start is after its end" do
+    error = assert_raises(ArgumentError) do
+      Pix::AccountStatementQuery.call(
+        account_id: @account1.id,
+        start_date: "2026-09-22",
+        end_date: "2026-09-21"
+      )
+    end
+
+    assert_equal "start_date must be before or equal to end_date", error.message
   end
 end
