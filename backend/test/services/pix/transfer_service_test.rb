@@ -195,6 +195,42 @@ class Pix::TransferServiceTest < ActiveSupport::TestCase
     assert_equal 280.00, @dest_account.reload.balance
   end
 
+  test "fraud_blocked defaults to false" do
+    account = Account.create!(user: @sender_user, balance: 100.00, status: "active")
+    assert_equal false, account.fraud_blocked
+    assert_nil account.fraud_blocked_at
+    assert_nil account.fraud_block_reason
+  end
+
+  test "rejects outgoing transfer from fraud-blocked source account" do
+    @source_account.update!(fraud_blocked: true, fraud_blocked_at: Time.current, fraud_block_reason: "Suspected phishing")
+
+    result = Pix::TransferService.call(
+      source_account_id: @source_account.id,
+      pix_key: "receiver_svc@example.com",
+      amount: 100.00
+    )
+
+    assert_not result.success?
+    assert_equal "Source account is blocked for suspected fraud", result.error
+    assert_equal 1000.00, @source_account.reload.balance
+  end
+
+  test "rejects incoming transfer to fraud-blocked destination account" do
+    @dest_account.update!(fraud_blocked: true, fraud_blocked_at: Time.current, fraud_block_reason: "Money laundering risk")
+
+    result = Pix::TransferService.call(
+      source_account_id: @source_account.id,
+      pix_key: "receiver_svc@example.com",
+      amount: 100.00
+    )
+
+    assert_not result.success?
+    assert_equal "Destination account is blocked for suspected fraud", result.error
+    assert_equal 1000.00, @source_account.reload.balance
+    assert_equal 200.00, @dest_account.reload.balance
+  end
+
   private
 
   def with_perform_later_failure
@@ -207,5 +243,6 @@ class Pix::TransferServiceTest < ActiveSupport::TestCase
     TransactionNotificationJob.define_singleton_method(:perform_later) do |*args, **kwargs|
       original.call(*args, **kwargs)
     end
+  end
   end
 end

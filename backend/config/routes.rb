@@ -15,6 +15,10 @@ Rails.application.routes.draw do
         as: :user_transactions_report,
         defaults: { format: :json }
       resources :accounts, only: [ :create, :show, :destroy ] do
+        member do
+          patch :block_fraud, to: "account_security#block_fraud"
+          patch :unblock_fraud, to: "account_security#unblock_fraud"
+        end
         resources :pix_keys, only: [ :create, :index ]
         resources :transfers, only: [ :index ], controller: "account_transfers"
         get "reports/statement", to: "account_reports#statement"

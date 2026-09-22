@@ -35,8 +35,16 @@ module Pix
           locked_source = (locked_first.id == @source_account_id) ? locked_first : locked_second
           locked_destination = (locked_first.id == @destination_account.id) ? locked_first : locked_second
 
+          if locked_source.fraud_blocked?
+            raise StandardError, "Source account is blocked for suspected fraud"
+          end
+
           if locked_source.status != "active"
             raise StandardError, "Source account is not active"
+          end
+
+          if locked_destination.fraud_blocked?
+            raise StandardError, "Destination account is blocked for suspected fraud"
           end
 
           if locked_destination.status == "closed"
@@ -82,6 +90,7 @@ module Pix
 
       @source_account = Account.find_by(id: @source_account_id)
       return "source account not found" unless @source_account
+      return "Source account is blocked for suspected fraud" if @source_account.fraud_blocked?
       return "source account is blocked" if @source_account.blocked?
       return "source account is closed" if @source_account.closed?
 
@@ -91,6 +100,7 @@ module Pix
 
       @destination_account = @pix_key.account
       return "destination account not found" unless @destination_account
+      return "Destination account is blocked for suspected fraud" if @destination_account.fraud_blocked?
       return "destination account is closed" if @destination_account.closed?
 
       if @source_account.id == @destination_account.id
