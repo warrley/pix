@@ -1,15 +1,19 @@
 package com.example.mobile.network
 
-import com.example.mobile.model.AccountCreateBody
-import com.example.mobile.model.AccountCreateRequest
 import com.example.mobile.model.AccountResponse
 import com.example.mobile.model.ApiResponse
+import com.example.mobile.model.UserCreateBody
+import com.example.mobile.model.UserCreateRequest
+import com.example.mobile.model.UserResponse
+import com.example.mobile.model.UserUpdateBody
+import com.example.mobile.model.UserUpdateRequest
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.HttpRequestTimeoutException
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.post
+import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.http.ContentType
@@ -22,20 +26,19 @@ import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 
-open class ApiException(message: String, cause: Throwable? = null) : Exception(message, cause)
-class AccountNotFoundException(message: String = "Conta não encontrada") : ApiException(message)
-class ServerException(message: String = "Erro interno no servidor") : ApiException(message)
-class NetworkException(message: String = "Sem conexão com a internet", cause: Throwable? = null) : ApiException(message, cause)
+class UserNotFoundException(message: String = "Usuário não encontrado") : ApiException(message)
 
-interface AccountRemoteDataSource {
-    suspend fun getAccount(id: Long): Result<AccountResponse>
-    suspend fun createAccount(userId: Long, agencyNumber: String = "0001"): Result<AccountResponse>
-    suspend fun deleteAccount(id: Long): Result<Unit>
+interface UserRemoteDataSource {
+    suspend fun getUser(id: Long): Result<UserResponse>
+    suspend fun createUser(request: UserCreateRequest): Result<UserResponse>
+    suspend fun updateUser(id: Long, request: UserUpdateRequest): Result<UserResponse>
+    suspend fun deleteUser(id: Long): Result<Unit>
+    suspend fun getUserAccounts(userId: Long): Result<List<AccountResponse>>
 }
 
-class KtorAccountRemoteDataSource(
+class KtorUserRemoteDataSource(
     private val client: HttpClient = KtorClient.httpClient
-) : AccountRemoteDataSource {
+) : UserRemoteDataSource {
 
     private suspend fun <T> executeRequest(
         block: suspend (baseUrl: String) -> HttpResponse,
@@ -52,14 +55,14 @@ class KtorAccountRemoteDataSource(
 
                 return@withContext when (response.status) {
                     HttpStatusCode.OK, HttpStatusCode.Created, HttpStatusCode.NoContent -> onSuccess(response)
-                    HttpStatusCode.NotFound -> Result.failure(AccountNotFoundException("Conta não encontrada (404)"))
-                    HttpStatusCode.BadRequest -> {
-                        val errorBody = runCatching { response.body<ApiResponse<Unit>>() }.getOrNull()
-                        Result.failure(ApiException(errorBody?.errorMessage ?: "Saldo deve ser zero para encerrar a conta."))
-                    }
+                    HttpStatusCode.NotFound -> Result.failure(UserNotFoundException("Usuário não encontrado (404)"))
                     HttpStatusCode.UnprocessableEntity -> {
                         val errorBody = runCatching { response.body<ApiResponse<Unit>>() }.getOrNull()
-                        Result.failure(ApiException(errorBody?.errorMessage ?: "Conta já se encontra encerrada."))
+                        Result.failure(ApiException(errorBody?.errorMessage ?: "Dados inválidos para o usuário."))
+                    }
+                    HttpStatusCode.BadRequest -> {
+                        val errorBody = runCatching { response.body<ApiResponse<Unit>>() }.getOrNull()
+                        Result.failure(ApiException(errorBody?.errorMessage ?: "Requisição inválida."))
                     }
                     HttpStatusCode.InternalServerError, HttpStatusCode.BadGateway, HttpStatusCode.ServiceUnavailable -> {
                         Result.failure(ServerException("Erro no servidor (${response.status.value}). Tente novamente mais tarde."))
@@ -82,14 +85,14 @@ class KtorAccountRemoteDataSource(
         }
     }
 
-    override suspend fun getAccount(id: Long): Result<AccountResponse> {
+    override suspend fun getUser(id: Long): Result<UserResponse> {
         return executeRequest(
-            block = { baseUrl -> client.get("$baseUrl/accounts/$id") },
+            block = { baseUrl -> client.get("$baseUrl/users/$id") },
             onSuccess = { response ->
-                val apiResponse = response.body<ApiResponse<AccountResponse>>()
-                val account = apiResponse.data
-                if (account != null) {
-                    Result.success(account)
+                val apiResponse = response.body<ApiResponse<UserResponse>>()
+                val user = apiResponse.data
+                if (user != null) {
+                    Result.success(user)
                 } else {
                     Result.failure(ApiException(apiResponse.errorMessage ?: "Resposta inválida do servidor"))
                 }
@@ -97,30 +100,60 @@ class KtorAccountRemoteDataSource(
         )
     }
 
-    override suspend fun createAccount(userId: Long, agencyNumber: String): Result<AccountResponse> {
+    override suspend fun createUser(request: UserCreateRequest): Result<UserResponse> {
         return executeRequest(
             block = { baseUrl ->
-                client.post("$baseUrl/accounts") {
+                client.post("$baseUrl/users") {
                     contentType(ContentType.Application.Json)
-                    setBody(AccountCreateBody(AccountCreateRequest(user_id = userId, agency_number = agencyNumber)))
+                    setBody(UserCreateBody(request))
                 }
             },
             onSuccess = { response ->
-                val apiResponse = response.body<ApiResponse<AccountResponse>>()
-                val account = apiResponse.data
-                if (account != null) {
-                    Result.success(account)
+                val apiResponse = response.body<ApiResponse<UserResponse>>()
+                val user = apiResponse.data
+                if (user != null) {
+                    Result.success(user)
                 } else {
-                    Result.failure(ApiException(apiResponse.errorMessage ?: "Erro ao criar conta bancária"))
+                    Result.failure(ApiException(apiResponse.errorMessage ?: "Erro ao criar usuário"))
                 }
             }
         )
     }
 
-    override suspend fun deleteAccount(id: Long): Result<Unit> {
+    override suspend fun updateUser(id: Long, request: UserUpdateRequest): Result<UserResponse> {
         return executeRequest(
-            block = { baseUrl -> client.delete("$baseUrl/accounts/$id") },
+            block = { baseUrl ->
+                client.put("$baseUrl/users/$id") {
+                    contentType(ContentType.Application.Json)
+                    setBody(UserUpdateBody(request))
+                }
+            },
+            onSuccess = { response ->
+                val apiResponse = response.body<ApiResponse<UserResponse>>()
+                val user = apiResponse.data
+                if (user != null) {
+                    Result.success(user)
+                } else {
+                    Result.failure(ApiException(apiResponse.errorMessage ?: "Erro ao atualizar dados do usuário"))
+                }
+            }
+        )
+    }
+
+    override suspend fun deleteUser(id: Long): Result<Unit> {
+        return executeRequest(
+            block = { baseUrl -> client.delete("$baseUrl/users/$id") },
             onSuccess = { Result.success(Unit) }
+        )
+    }
+
+    override suspend fun getUserAccounts(userId: Long): Result<List<AccountResponse>> {
+        return executeRequest(
+            block = { baseUrl -> client.get("$baseUrl/users/$userId/accounts") },
+            onSuccess = { response ->
+                val apiResponse = response.body<ApiResponse<List<AccountResponse>>>()
+                Result.success(apiResponse.data ?: emptyList())
+            }
         )
     }
 }

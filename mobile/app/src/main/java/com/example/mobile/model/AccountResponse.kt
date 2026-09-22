@@ -39,7 +39,35 @@ data class AccountResponse(
 )
 
 @Serializable
+data class AccountCreateRequest(
+    val user_id: Long,
+    val agency_number: String = "0001"
+)
+
+@Serializable
+data class AccountCreateBody(
+    val account: AccountCreateRequest
+)
+
+@Serializable
 data class ApiResponse<T>(
     val data: T? = null,
-    val error: String? = null
-)
+    val error: kotlinx.serialization.json.JsonElement? = null
+) {
+    val errorMessage: String?
+        get() = when (error) {
+            null, is kotlinx.serialization.json.JsonNull -> null
+            is kotlinx.serialization.json.JsonPrimitive -> error.content
+            is kotlinx.serialization.json.JsonObject -> {
+                error.entries.joinToString("; ") { (key, value) ->
+                    val messages = if (value is kotlinx.serialization.json.JsonArray) {
+                        value.joinToString(", ") { (it as? kotlinx.serialization.json.JsonPrimitive)?.content ?: it.toString() }
+                    } else {
+                        value.toString()
+                    }
+                    "$key: $messages"
+                }
+            }
+            else -> error.toString()
+        }
+}
