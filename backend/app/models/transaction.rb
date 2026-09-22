@@ -8,6 +8,7 @@ class Transaction < ApplicationRecord
 
   belongs_to :source_account, class_name: "Account"
   belongs_to :destination_account, class_name: "Account"
+  has_many :transaction_events, dependent: :restrict_with_error
 
   validates :end_to_end_id, presence: true, uniqueness: true, length: { is: 32 }
   validates :pix_key_used, presence: true, length: { maximum: 77 }

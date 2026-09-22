@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_21_125248) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_21_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -39,6 +39,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_21_125248) do
     t.index ["key_value"], name: "index_pix_keys_on_key_value_active", unique: true, where: "((status)::text = 'active'::text)"
     t.check_constraint "key_type::text = ANY (ARRAY['cpf'::character varying::text, 'cnpj'::character varying::text, 'email'::character varying::text, 'phone'::character varying::text, 'random'::character varying::text])", name: "pix_keys_key_type_valid"
     t.check_constraint "status::text = ANY (ARRAY['active'::character varying::text, 'suspended'::character varying::text, 'cancelled'::character varying::text])", name: "pix_keys_status_valid"
+  end
+
+  create_table "transaction_events", force: :cascade do |t|
+    t.decimal "amount", precision: 14, scale: 2, null: false
+    t.datetime "created_at", null: false
+    t.string "current_status", limit: 20, null: false
+    t.bigint "destination_account_id", null: false
+    t.string "previous_status", limit: 20
+    t.string "reason", limit: 255
+    t.bigint "source_account_id", null: false
+    t.bigint "transaction_id", null: false
+    t.index ["destination_account_id"], name: "index_transaction_events_on_destination_account_id"
+    t.index ["source_account_id"], name: "index_transaction_events_on_source_account_id"
+    t.index ["transaction_id"], name: "index_transaction_events_on_transaction_id"
   end
 
   create_table "transactions", force: :cascade do |t|
@@ -74,6 +88,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_21_125248) do
 
   add_foreign_key "accounts", "users"
   add_foreign_key "pix_keys", "accounts"
+  add_foreign_key "transaction_events", "accounts", column: "destination_account_id", on_delete: :restrict
+  add_foreign_key "transaction_events", "accounts", column: "source_account_id", on_delete: :restrict
+  add_foreign_key "transaction_events", "transactions", on_delete: :restrict
   add_foreign_key "transactions", "accounts", column: "destination_account_id"
   add_foreign_key "transactions", "accounts", column: "source_account_id"
 end
