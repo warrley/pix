@@ -1,13 +1,19 @@
 module Pix
   class AccountStatementQuery
-    def self.call(account_id:, page: 1, per_page: 20)
-      new(account_id: account_id, page: page, per_page: per_page).call
+    def self.call(account_id:, page: 1, per_page: 20, start_date: nil, end_date: nil)
+      new(account_id: account_id, page: page, per_page: per_page, start_date: start_date, end_date: end_date).call
     end
 
-    def initialize(account_id:, page:, per_page:)
+    def initialize(account_id:, page:, per_page:, start_date: nil, end_date: nil)
       @account_id = account_id
       @page = [ page.to_i, 1 ].max
       @per_page = [ [ per_page.to_i, 1 ].max, 100 ].min # max de 100 por regra da issue
+      @start_time = parse_date_boundary(start_date, beginning: true)
+      @end_time = parse_date_boundary(end_date, beginning: false)
+
+      if @start_time && @end_time && @start_time > @end_time
+        raise ArgumentError, "start_date must be before or equal to end_date"
+      end
     end
 
     def call
@@ -15,6 +21,8 @@ module Pix
       relation = Transaction.where(source_account_id: @account_id)
                             .or(Transaction.where(destination_account_id: @account_id))
                             .order(created_at: :desc)
+      relation = relation.where("created_at >= ?", @start_time) if @start_time
+      relation = relation.where("created_at <= ?", @end_time) if @end_time
 
       total_count = relation.count
       total_pages = (total_count.to_f / @per_page).ceil
@@ -54,6 +62,20 @@ module Pix
     end
 
     private
+
+    def parse_date_boundary(value, beginning:)
+      return if value.blank?
+
+      utc_date = if value.match?(/\A\d{4}-\d{2}-\d{2}\z/)
+        Date.iso8601(value)
+      else
+        Time.iso8601(value).utc.to_date
+      end
+
+      (beginning ? utc_date.beginning_of_day : utc_date.end_of_day).utc
+    rescue ArgumentError, Date::Error
+      raise ArgumentError, "invalid date: #{value}"
+    end
 
     def mask_doc_id(doc_id)
       return nil if doc_id.blank?
