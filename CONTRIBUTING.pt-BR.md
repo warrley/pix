@@ -11,7 +11,7 @@ Este é apenas o guia de convenções da nossa equipe para que não quebremos o 
 Estamos utilizando o padrão básico de [conventional commits](https://www.conventionalcommits.org/en/v1.0.0/). Mantenha simples:
 `tipo(escopo): mensagem`
 
-O `(escopo)` ajuda a mostrar qual parte do projeto você alterou, como `(frontend)` ou `(backend)`.
+O `(escopo)` ajuda a mostrar qual parte do projeto você alterou, como `(backend)`.
 
 Principais tipos que você pode usar:
 - `feat`: para novas funcionalidades
@@ -20,7 +20,7 @@ Principais tipos que você pode usar:
 - `chore`: para configurações ou tarefas de manutenção
 
 Exemplo:
-`feat(frontend): criar pagina de login`
+`feat(backend): criar tabela de usuarios`
 
 ## Pull Requests
 1. Faça push da sua branch.
