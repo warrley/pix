@@ -12,6 +12,7 @@ Rails.application.routes.draw do
       end
       resources :accounts, only: [ :create, :show, :destroy ] do
         resources :pix_keys, only: [ :create, :index ]
+        resources :transfers, only: [ :index ], controller: "account_transfers"
       end
       resources :pix_keys, only: [ :destroy ]
       resources :transfers, only: [ :create, :show ] do
