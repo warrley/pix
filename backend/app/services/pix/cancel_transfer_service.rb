@@ -26,7 +26,7 @@ module Pix
         end
 
         source_account = transaction.source_account
-        
+
         source_account.lock!
         source_account.update!(balance: source_account.balance + transaction.amount)
 

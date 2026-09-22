@@ -6,10 +6,10 @@ class CpfCnpjValidator < ActiveModel::EachValidator
     normalized = value.to_s.gsub(/\D/, "")
 
     valid = case normalized.length
-            when 11 then valid_cpf?(normalized)
-            when 14 then valid_cnpj?(normalized)
-            else false
-            end
+    when 11 then valid_cpf?(normalized)
+    when 14 then valid_cnpj?(normalized)
+    else false
+    end
 
     record.errors.add(attribute, "is not a valid CPF or CNPJ") unless valid
   end
@@ -28,7 +28,7 @@ class CpfCnpjValidator < ActiveModel::EachValidator
 
     return false if digits[9] != first_digit
 
-    base_with_first_digit = digits[0, 9] + [first_digit]
+    base_with_first_digit = digits[0, 9] + [ first_digit ]
     sum = base_with_first_digit.each_with_index.sum { |digit, index| digit * (11 - index) }
     second_digit = sum % 11
     second_digit = second_digit < 2 ? 0 : 11 - second_digit
@@ -42,15 +42,15 @@ class CpfCnpjValidator < ActiveModel::EachValidator
 
     digits = doc_id.chars.map(&:to_i)
 
-    weights = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+    weights = [ 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2 ]
     sum = digits[0, 12].each_with_index.sum { |digit, index| digit * weights[index] }
     first_digit = sum % 11
     first_digit = first_digit < 2 ? 0 : 11 - first_digit
 
     return false if digits[12] != first_digit
 
-    base_with_first_digit = digits[0, 12] + [first_digit]
-    weights = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+    base_with_first_digit = digits[0, 12] + [ first_digit ]
+    weights = [ 6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2 ]
     sum = base_with_first_digit.each_with_index.sum { |digit, index| digit * weights[index] }
     second_digit = sum % 11
     second_digit = second_digit < 2 ? 0 : 11 - second_digit

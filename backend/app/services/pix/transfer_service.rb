@@ -26,7 +26,7 @@ module Pix
       transaction_record = nil
 
       ActiveRecord::Base.transaction do
-        first_id, second_id = [@source_account_id, @destination_account.id].sort
+        first_id, second_id = [ @source_account_id, @destination_account.id ].sort
         locked_first = Account.lock.find(first_id)
         locked_second = Account.lock.find(second_id)
 
@@ -113,7 +113,7 @@ module Pix
 
     def normalize_key_value(value)
       digits = value.gsub(/\D/, "")
-      return digits if [11, 14].include?(digits.length) && !value.include?("@")
+      return digits if [ 11, 14 ].include?(digits.length) && !value.include?("@")
 
       value.downcase
     end
