@@ -38,6 +38,18 @@ module Api
         end
       end
 
+      def cancel
+        result = Pix::CancelTransferService.call(transaction_id: params[:id])
+
+        if result.success?
+          render_success(receipt_data(result.transaction))
+        elsif result.error == "Transaction not found"
+          render_error(result.error, status: :not_found)
+        else
+          render_error(result.error, status: :unprocessable_entity)
+        end
+      end
+
       private
 
       def transfer_params
@@ -57,6 +69,7 @@ module Api
           amount: tx.amount.to_f,
           description: tx.description,
           status: tx.status,
+          cancelled_at: tx.cancelled_at,
           pix_key_used: tx.pix_key_used,
           created_at: tx.created_at,
           sender: {
