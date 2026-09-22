@@ -1,0 +1,464 @@
+{
+	"info": {
+		"_postman_id": "9a9a5226-pix-api-collection",
+		"name": "Pix API",
+		"description": "Postman Collection for Pix Backend API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:3000",
+			"type": "string"
+		},
+		{
+			"key": "user_id",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "account_id",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "pix_key_id",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "transfer_id",
+			"value": "1",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Health Check",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/up",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"up"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Users",
+			"item": [
+				{
+					"name": "Create User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"user\": {\n    \"name\": \"Maria Silva\",\n    \"email\": \"maria.silva@example.com\",\n    \"doc_id\": \"12345678909\",\n    \"phone\": \"+5511999999999\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/users",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"users"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get User",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/users/{{user_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"users",
+								"{{user_id}}"
+							]
+						}
+					}
+				},
+				{
+					"name": "Update User",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"user\": {\n    \"name\": \"Maria Silva Santos\",\n    \"phone\": \"+5511988888888\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/users/{{user_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"users",
+								"{{user_id}}"
+							]
+						}
+					}
+				},
+				{
+					"name": "Delete User",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/users/{{user_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"users",
+								"{{user_id}}"
+							]
+						}
+					}
+				},
+				{
+					"name": "List User Accounts",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/users/{{user_id}}/accounts",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"users",
+								"{{user_id}}",
+								"accounts"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Accounts & Security",
+			"item": [
+				{
+					"name": "Create Account",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"account\": {\n    \"user_id\": {{user_id}},\n    \"agency_number\": \"0001\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/accounts",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"accounts"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Account Details",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/accounts/{{account_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"accounts",
+								"{{account_id}}"
+							]
+						}
+					}
+				},
+				{
+					"name": "Block Account (Fraud Precaution)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"reason\": \"Suspect of fraudulent activity / phishing attempt\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/accounts/{{account_id}}/block_fraud",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"accounts",
+								"{{account_id}}",
+								"block_fraud"
+							]
+						}
+					}
+				},
+				{
+					"name": "Unblock Account (Fraud Precaution)",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/accounts/{{account_id}}/unblock_fraud",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"accounts",
+								"{{account_id}}",
+								"unblock_fraud"
+							]
+						}
+					}
+				},
+				{
+					"name": "Close Account",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/accounts/{{account_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"accounts",
+								"{{account_id}}"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Pix Keys",
+			"item": [
+				{
+					"name": "Create Pix Key",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"pix_key\": {\n    \"key_type\": \"email\",\n    \"key_value\": \"maria.silva@example.com\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/accounts/{{account_id}}/pix_keys",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"accounts",
+								"{{account_id}}",
+								"pix_keys"
+							]
+						}
+					}
+				},
+				{
+					"name": "List Account Pix Keys",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/accounts/{{account_id}}/pix_keys",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"accounts",
+								"{{account_id}}",
+								"pix_keys"
+							]
+						}
+					}
+				},
+				{
+					"name": "Delete Pix Key",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/pix_keys/{{pix_key_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"pix_keys",
+								"{{pix_key_id}}"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Transfers",
+			"item": [
+				{
+					"name": "Create Pix Transfer",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-Idempotency-Key",
+								"value": "E010110102026092200000000001",
+								"description": "Optional Idempotency Key"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"transfer\": {\n    \"source_account_id\": {{account_id}},\n    \"pix_key\": \"receiver@example.com\",\n    \"amount\": 50.00,\n    \"description\": \"Pagamento de serviço\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/transfers",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"transfers"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Transfer Details",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/transfers/{{transfer_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"transfers",
+								"{{transfer_id}}"
+							]
+						}
+					}
+				},
+				{
+					"name": "List Account Transfers",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/accounts/{{account_id}}/transfers",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"accounts",
+								"{{account_id}}",
+								"transfers"
+							]
+						}
+					}
+				},
+				{
+					"name": "Cancel Transfer",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/transfers/{{transfer_id}}/cancel",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"transfers",
+								"{{transfer_id}}",
+								"cancel"
+							]
+						}
+					}
+				}
+			]
+		}
+	]
+}
