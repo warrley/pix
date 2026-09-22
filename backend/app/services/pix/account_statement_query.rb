@@ -6,8 +6,8 @@ module Pix
 
     def initialize(account_id:, page:, per_page:)
       @account_id = account_id
-      @page = [page.to_i, 1].max
-      @per_page = [[per_page.to_i, 1].max, 100].min # max de 100 por regra da issue
+      @page = [ page.to_i, 1 ].max
+      @per_page = [ [ per_page.to_i, 1 ].max, 100 ].min # max de 100 por regra da issue
     end
 
     def call
