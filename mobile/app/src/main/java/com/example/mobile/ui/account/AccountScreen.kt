@@ -26,6 +26,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.NorthEast
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Refresh
@@ -38,15 +39,25 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,6 +69,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mobile.model.AccountResponse
+import com.example.mobile.model.UserResponse
+import com.example.mobile.ui.profile.ProfileManagementSheet
 import com.example.mobile.ui.theme.NuActionCircle
 import com.example.mobile.ui.theme.NuDivider
 import com.example.mobile.ui.theme.NuError
@@ -67,61 +80,137 @@ import com.example.mobile.ui.theme.NuPurpleLight
 import com.example.mobile.ui.theme.NuSuccess
 import com.example.mobile.ui.theme.NuTextPrimary
 import com.example.mobile.ui.theme.NuTextSecondary
+import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AccountScreen(
     modifier: Modifier = Modifier,
     viewModel: AccountViewModel = viewModel(factory = AccountViewModel.Factory)
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(Color.White)
-    ) {
-        // Nubank Header (Always visible)
-        NubankHeader(
-            isBalanceVisible = (uiState as? AccountUiState.Success)?.isBalanceVisible ?: true,
-            onToggleVisibility = { viewModel.toggleBalanceVisibility() },
-            onRefresh = { viewModel.loadAccount() }
-        )
+    var showProfileSheet by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-        // Body Content based on state
-        when (val state = uiState) {
-            is AccountUiState.Loading -> {
-                LoadingState(modifier = Modifier.fillMaxSize())
-            }
+    val successState = uiState as? AccountUiState.Success
 
-            is AccountUiState.Error -> {
-                ErrorState(
-                    message = state.message,
-                    onRetry = { viewModel.loadAccount() },
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
+    LaunchedEffect(successState?.feedbackMessage) {
+        val msg = successState?.feedbackMessage
+        if (msg != null) {
+            snackbarHostState.showSnackbar(msg)
+            viewModel.clearFeedbackMessage()
+        }
+    }
 
-            is AccountUiState.Success -> {
-                AccountSuccessContent(
-                    account = state.account,
-                    isBalanceVisible = state.isBalanceVisible,
-                    onRefresh = { viewModel.loadAccount(state.account.id) },
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                )
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        modifier = modifier.fillMaxSize()
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .background(Color.White)
+        ) {
+            // Nubank Header (Always visible)
+            NubankHeader(
+                userName = successState?.user?.name ?: "Warley",
+                userInitial = successState?.user?.name?.firstOrNull()?.uppercase() ?: "W",
+                isBalanceVisible = successState?.isBalanceVisible ?: true,
+                onToggleVisibility = { viewModel.toggleBalanceVisibility() },
+                onAvatarClick = { showProfileSheet = true },
+                onHelpClick = {
+                    coroutineScope.launch {
+                        snackbarHostState.showSnackbar("PIX App — Gestão de Configuração (UFC)")
+                    }
+                }
+            )
+
+            // Body Content based on state
+            when (val state = uiState) {
+                is AccountUiState.Loading -> {
+                    LoadingState(modifier = Modifier.fillMaxSize())
+                }
+
+                is AccountUiState.Error -> {
+                    ErrorState(
+                        message = state.message,
+                        onRetry = { viewModel.loadAccount() },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+
+                is AccountUiState.Success -> {
+                    AccountSuccessContent(
+                        account = state.account,
+                        isBalanceVisible = state.isBalanceVisible,
+                        onRefresh = { viewModel.loadAccount(state.account.id) },
+                        onOpenProfile = { showProfileSheet = true },
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                    )
+                }
             }
         }
+    }
+
+    // Profile & Account Management BottomSheet
+    if (showProfileSheet && successState != null) {
+        ProfileManagementSheet(
+            sheetState = sheetState,
+            user = successState.user,
+            currentAccount = successState.account,
+            userAccounts = successState.userAccounts,
+            onDismiss = { showProfileSheet = false },
+            onCreateUser = { name, email, docId, phone ->
+                viewModel.createUser(name, email, docId, phone) { success, msg ->
+                    coroutineScope.launch { snackbarHostState.showSnackbar(msg) }
+                }
+            },
+            onUpdateUser = { name, email, phone ->
+                viewModel.updateUser(name, email, phone) { success, msg ->
+                    coroutineScope.launch { snackbarHostState.showSnackbar(msg) }
+                }
+            },
+            onDeleteUser = {
+                viewModel.deleteUser { success, msg ->
+                    coroutineScope.launch { snackbarHostState.showSnackbar(msg) }
+                    if (success) showProfileSheet = false
+                }
+            },
+            onCreateAccount = {
+                viewModel.createAccount { success, msg ->
+                    coroutineScope.launch { snackbarHostState.showSnackbar(msg) }
+                }
+            },
+            onDeleteAccount = {
+                viewModel.deleteAccount { success, msg ->
+                    coroutineScope.launch { snackbarHostState.showSnackbar(msg) }
+                    if (success) showProfileSheet = false
+                }
+            },
+            onSwitchAccount = { accountId ->
+                viewModel.switchAccount(accountId)
+                showProfileSheet = false
+            }
+        )
     }
 }
 
 @Composable
 private fun NubankHeader(
+    userName: String,
+    userInitial: String,
     isBalanceVisible: Boolean,
     onToggleVisibility: () -> Unit,
-    onRefresh: () -> Unit
+    onAvatarClick: () -> Unit,
+    onHelpClick: () -> Unit
 ) {
     Surface(
         color = NuPurple,
@@ -137,17 +226,17 @@ private fun NubankHeader(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // User Avatar Circle
+                // User Avatar Circle (clicking opens profile and user management)
                 Box(
                     modifier = Modifier
                         .size(44.dp)
                         .clip(CircleShape)
                         .background(NuPurpleDark)
-                        .clickable(onClick = onRefresh),
+                        .clickable(onClick = onAvatarClick),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "W",
+                        text = userInitial,
                         color = Color.White,
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp
@@ -164,7 +253,7 @@ private fun NubankHeader(
                         )
                     }
 
-                    IconButton(onClick = onRefresh) {
+                    IconButton(onClick = onHelpClick) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.HelpOutline,
                             contentDescription = "Me ajude",
@@ -177,7 +266,7 @@ private fun NubankHeader(
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = "Olá, Warley",
+                text = "Olá, $userName",
                 color = Color.White,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
@@ -191,6 +280,7 @@ private fun AccountSuccessContent(
     account: AccountResponse,
     isBalanceVisible: Boolean,
     onRefresh: () -> Unit,
+    onOpenProfile: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.padding(vertical = 16.dp)) {
@@ -247,7 +337,7 @@ private fun AccountSuccessContent(
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            // Agency & Account info chip
+            // Account and Agency Details chip
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -258,18 +348,16 @@ private fun AccountSuccessContent(
                     color = NuTextSecondary
                 )
 
-                val isBlocked = account.status != "active"
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(if (isBlocked) NuError.copy(alpha = 0.12f) else NuSuccess.copy(alpha = 0.12f))
-                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (account.status == "active") NuSuccess.copy(alpha = 0.15f) else NuError.copy(alpha = 0.15f)
                 ) {
                     Text(
-                        text = if (isBlocked) "Bloqueada" else "Ativa",
-                        color = if (isBlocked) NuError else NuSuccess,
+                        text = if (account.status == "active") "Ativa" else account.status.replaceFirstChar { it.uppercase() },
+                        color = if (account.status == "active") NuSuccess else NuError,
                         fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                     )
                 }
             }
@@ -277,13 +365,13 @@ private fun AccountSuccessContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Quick Actions Horizontal Row
+        // Quick Action Buttons (horizontal scroll)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             NubankActionButton(
                 icon = Icons.Default.QrCode,
@@ -303,38 +391,83 @@ private fun AccountSuccessContent(
             NubankActionButton(
                 icon = Icons.AutoMirrored.Filled.ReceiptLong,
                 label = "Extrato",
-                onClick = onRefresh
+                onClick = {}
             )
         }
 
         Spacer(modifier = Modifier.height(24.dp))
-        HorizontalDivider(color = NuDivider, thickness = 1.dp)
-        Spacer(modifier = Modifier.height(16.dp))
 
-        // "Meus Cartões" Card
+        // Profile & Accounts Management Card
         Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = NuActionCircle),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = NuActionCircle)
+                .padding(horizontal = 24.dp)
+                .clickable(onClick = onOpenProfile)
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                    .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ManageAccounts,
+                    contentDescription = null,
+                    tint = NuPurple,
+                    modifier = Modifier.size(28.dp)
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Gerenciar Perfil e Contas",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = NuTextPrimary
+                    )
+                    Text(
+                        text = "Cadastrar usuário, alterar dados ou abrir nova conta",
+                        fontSize = 12.sp,
+                        color = NuTextSecondary
+                    )
+                }
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = null,
+                    tint = NuTextSecondary,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // My Cards Container
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = NuActionCircle),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.CreditCard,
                     contentDescription = null,
-                    tint = NuPurple
+                    tint = NuPurple,
+                    modifier = Modifier.size(24.dp)
                 )
                 Text(
                     text = "Meus cartões",
+                    fontWeight = FontWeight.SemiBold,
                     fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
                     color = NuTextPrimary
                 )
             }
@@ -342,7 +475,7 @@ private fun AccountSuccessContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Nubank Security Information Card
+        // Security / Antifraud Info Banner
         Card(
             modifier = Modifier
                 .fillMaxWidth()
