@@ -13,3 +13,14 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Keystore and signing keys
+*.jks
+*.keystore
+
+# Google services (Firebase credentials)
+google-services.json
+
+# OS files
+.DS_Store
+Thumbs.db

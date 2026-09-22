@@ -244,5 +244,4 @@ class Pix::TransferServiceTest < ActiveSupport::TestCase
       original.call(*args, **kwargs)
     end
   end
-  end
 end
