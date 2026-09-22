@@ -47,9 +47,6 @@ module Pix
             raise StandardError, "Insufficient funds"
           end
 
-          locked_source.update!(balance: locked_source.balance - @amount)
-          locked_destination.update!(balance: locked_destination.balance + @amount)
-
           transaction_record = Transaction.create!(
             end_to_end_id: @end_to_end_id,
             source_account: locked_source,
@@ -57,8 +54,16 @@ module Pix
             pix_key_used: @pix_key_raw,
             amount: @amount,
             description: @description,
-            status: :completed
+            status: :processing
           )
+
+          record_event(transaction_record, current_status: "created", reason: "Transfer created")
+
+          locked_source.update!(balance: locked_source.balance - @amount)
+          locked_destination.update!(balance: locked_destination.balance + @amount)
+
+          transaction_record.update!(status: :completed)
+          record_event(transaction_record, previous_status: "created", current_status: "completed", reason: "Balance transfer completed")
         end
       rescue StandardError => e
         failed_tx = record_failed_transaction(e.message)
@@ -114,6 +119,19 @@ module Pix
       )
     rescue StandardError
       nil
+    end
+
+    def record_event(transaction_record, previous_status: nil, current_status:, reason:)
+      TransactionEvent.create!(
+        transaction_record: transaction_record,
+        previous_status: previous_status,
+        current_status: current_status,
+        amount: transaction_record.amount,
+        source_account: transaction_record.source_account,
+        destination_account: transaction_record.destination_account,
+        reason: reason,
+        created_at: Time.current
+      )
     end
 
     def normalize_key_value(value)

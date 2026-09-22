@@ -23,13 +23,18 @@ class Api::V1::TransfersCancelTest < ActionDispatch::IntegrationTest
   end
 
   test "should cancel a pending transaction and return 200 OK" do
-    post "/api/v1/transfers/#{@transaction.id}/cancel"
+    post "/api/v1/transfers/#{@transaction.id}/cancel", params: { reason: "Customer requested cancellation" }
 
     assert_response :success
 
     data = JSON.parse(response.body)["data"]
     assert_equal "cancelled", data["status"]
     assert_not_nil data["cancelled_at"]
+
+    event = @transaction.transaction_events.order(:id).last
+    assert_equal "processing", event.previous_status
+    assert_equal "cancelled", event.current_status
+    assert_equal "Customer requested cancellation", event.reason
   end
 
   test "should return 404 if transaction not found" do

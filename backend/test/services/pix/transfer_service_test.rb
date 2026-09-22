@@ -31,6 +31,12 @@ class Pix::TransferServiceTest < ActiveSupport::TestCase
     assert_equal 850.00, @source_account.reload.balance
     assert_equal 350.00, @dest_account.reload.balance
     assert_enqueued_with(job: TransactionNotificationJob, args: [ result.transaction.id, "completed" ])
+
+    events = result.transaction.transaction_events.order(:id)
+    assert_equal 2, events.count
+    assert_equal [ nil, "created" ], events.map(&:previous_status)
+    assert_equal [ "created", "completed" ], events.map(&:current_status)
+    assert_equal [ "Transfer created", "Balance transfer completed" ], events.map(&:reason)
   end
 
   test "rejects transfer with amount <= 0" do

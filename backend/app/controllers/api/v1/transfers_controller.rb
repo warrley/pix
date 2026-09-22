@@ -39,7 +39,7 @@ module Api
       end
 
       def cancel
-        result = Pix::CancelTransferService.call(transaction_id: params[:id])
+        result = Pix::CancelTransferService.call(transaction_id: params[:id], reason: params[:reason])
 
         if result.success?
           render_success(receipt_data(result.transaction))
