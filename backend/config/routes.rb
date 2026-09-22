@@ -14,7 +14,11 @@ Rails.application.routes.draw do
         resources :pix_keys, only: [ :create, :index ]
       end
       resources :pix_keys, only: [ :destroy ]
-      resources :transfers, only: [ :create, :show ]
+      resources :transfers, only: [ :create, :show ] do
+        member do
+          post :cancel
+        end
+      end
     end
   end
 
