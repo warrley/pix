@@ -2,7 +2,10 @@ require "test_helper"
 
 module Pix
   class CancelTransferServiceTest < ActiveSupport::TestCase
+    include ActiveJob::TestHelper
+
     setup do
+      clear_enqueued_jobs
       @user1 = User.new(name: "Sender", email: "sender_test@example.com", doc_id: "12345678901")
       @user1.save!(validate: false)
 
@@ -33,6 +36,7 @@ module Pix
 
       @source.reload
       assert_equal 500.0, @source.balance
+      assert_enqueued_with(job: TransactionNotificationJob, args: [ @transaction.id, "cancelled" ])
     end
 
     test "raises error when attempting to cancel completed transaction" do
@@ -45,6 +49,7 @@ module Pix
 
       @source.reload
       assert_equal 400.0, @source.balance
+      assert_enqueued_jobs 0
     end
 
     test "raises error when attempting to cancel already cancelled transaction" do
@@ -57,6 +62,19 @@ module Pix
 
       @source.reload
       assert_equal 400.0, @source.balance
+      assert_enqueued_jobs 0
+    end
+
+    test "keeps the cancellation when notification enqueueing fails" do
+      result = nil
+      with_perform_later_failure do
+        result = CancelTransferService.call(transaction_id: @transaction.id)
+      end
+
+      assert result.success?
+      assert_equal "cancelled", result.transaction.status
+      assert_not_nil result.transaction.cancelled_at
+      assert_equal 500.0, @source.reload.balance
     end
 
     test "fails if transaction does not exist" do
@@ -64,6 +82,20 @@ module Pix
 
       assert_not result.success?
       assert_equal "Transaction not found", result.error
+    end
+
+    private
+
+    def with_perform_later_failure
+      original = TransactionNotificationJob.method(:perform_later)
+      TransactionNotificationJob.define_singleton_method(:perform_later) do |*|
+        raise "queue unavailable"
+      end
+      yield
+    ensure
+      TransactionNotificationJob.define_singleton_method(:perform_later) do |*args, **kwargs|
+        original.call(*args, **kwargs)
+      end
     end
   end
 end

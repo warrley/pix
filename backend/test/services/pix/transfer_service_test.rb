@@ -1,7 +1,10 @@
 require "test_helper"
 
 class Pix::TransferServiceTest < ActiveSupport::TestCase
+  include ActiveJob::TestHelper
+
   setup do
+    clear_enqueued_jobs
     @sender_user = User.create!(name: "Sender User", email: "sender_svc@example.com", doc_id: "52998224725")
     @receiver_user = User.create!(name: "Receiver User", email: "receiver_svc@example.com", doc_id: "11444777000161")
 
@@ -27,6 +30,7 @@ class Pix::TransferServiceTest < ActiveSupport::TestCase
     assert_match(/\AE01011010\d{12}[a-z0-9]{11}\z/i, result.transaction.end_to_end_id)
     assert_equal 850.00, @source_account.reload.balance
     assert_equal 350.00, @dest_account.reload.balance
+    assert_enqueued_with(job: TransactionNotificationJob, args: [ result.transaction.id, "completed" ])
   end
 
   test "rejects transfer with amount <= 0" do
@@ -57,6 +61,23 @@ class Pix::TransferServiceTest < ActiveSupport::TestCase
     assert_not_nil result.transaction
     assert_equal "failed", result.transaction.status
     assert_equal "insufficient funds", result.transaction.failure_reason
+    assert_enqueued_with(job: TransactionNotificationJob, args: [ result.transaction.id, "failed" ])
+  end
+
+  test "keeps a completed transfer when notification enqueueing fails" do
+    result = nil
+    with_perform_later_failure do
+      result = Pix::TransferService.call(
+        source_account_id: @source_account.id,
+        pix_key: "receiver_svc@example.com",
+        amount: 150.00
+      )
+    end
+
+    assert result.success?
+    assert_equal "completed", result.transaction.status
+    assert_equal 850.00, @source_account.reload.balance
+    assert_equal 350.00, @dest_account.reload.balance
   end
 
   test "rejects transfer from blocked source account" do
@@ -166,5 +187,19 @@ class Pix::TransferServiceTest < ActiveSupport::TestCase
     assert_equal 1, failures
     assert_equal 20.00, @source_account.reload.balance
     assert_equal 280.00, @dest_account.reload.balance
+  end
+
+  private
+
+  def with_perform_later_failure
+    original = TransactionNotificationJob.method(:perform_later)
+    TransactionNotificationJob.define_singleton_method(:perform_later) do |*|
+      raise "queue unavailable"
+    end
+    yield
+  ensure
+    TransactionNotificationJob.define_singleton_method(:perform_later) do |*args, **kwargs|
+      original.call(*args, **kwargs)
+    end
   end
 end
