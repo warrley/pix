@@ -3,7 +3,7 @@ module Api
     class AccountTransfersController < ApplicationController
       def index
         account = Account.find_by(id: params[:account_id])
-        
+
         unless account
           render json: { error: "Account not found" }, status: :not_found
           return
