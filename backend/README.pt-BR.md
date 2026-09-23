@@ -21,3 +21,12 @@ Tópicos que você pode querer abordar:
 * Instruções de implantação (deployment)
 
 * ...
+
+## Documentação da API
+
+Com a aplicação em execução, a documentação interativa está disponível em:
+
+- Swagger UI: `GET /api-docs`
+- Especificação OpenAPI: `GET /openapi.yaml`
+
+O contrato versionado está em [docs/openapi.yaml](docs/openapi.yaml).
