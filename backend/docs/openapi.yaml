@@ -1,0 +1,1043 @@
+openapi: 3.1.0
+info:
+  title: RuBank API
+  version: 1.0.0
+  description: |
+    Contrato da API versionada em `/api/v1` para usuários, contas, chaves PIX,
+    transferências internas e relatórios.
+
+    **Escopo atual:** a implementação mantém dados localmente e não representa,
+    por si só, uma integração ou certificação junto ao DICT/SPI. A auditoria
+    funcional e de aderência ao domínio está em `docs/auditoria-api-pix.md`.
+  contact:
+    name: Equipe RuBank
+  license:
+    name: Proprietary
+servers:
+  - url: http://localhost:3000
+    description: Desenvolvimento local
+  - url: https://pix.warley.xyz
+    description: Host configurado como permitido pela aplicação; confirme o ambiente antes de usar
+tags:
+  - name: Health
+  - name: Users
+  - name: Accounts
+  - name: PIX keys
+  - name: Transfers
+  - name: Reports
+security: []
+paths:
+  /up:
+    get:
+      tags: [Health]
+      summary: Verifica se a aplicação está disponível
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Aplicação disponível
+          content:
+            text/html:
+              schema:
+                type: string
+
+  /api/v1/users:
+    post:
+      tags: [Users]
+      summary: Cria um usuário
+      operationId: createUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+            example:
+              user:
+                name: João da Silva
+                email: joao@example.com
+                doc_id: '52998224725'
+                phone: '+5585999999999'
+      responses:
+        '201':
+          description: Usuário criado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/v1/users/{id}:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+    get:
+      tags: [Users]
+      summary: Consulta um usuário
+      operationId: getUser
+      responses:
+        '200':
+          description: Usuário encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Users]
+      summary: Atualiza parcialmente um usuário
+      operationId: patchUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdateBody'
+      responses:
+        '200':
+          description: Usuário atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    put:
+      tags: [Users]
+      summary: Atualiza um usuário
+      description: A rota Rails aceita PUT e PATCH para a mesma ação de atualização.
+      operationId: updateUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdateBody'
+      responses:
+        '200':
+          description: Usuário atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      tags: [Users]
+      summary: Exclui um usuário
+      description: Falha quando o usuário possui contas vinculadas.
+      operationId: deleteUser
+      responses:
+        '204':
+          description: Usuário excluído; resposta sem corpo
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/v1/users/{user_id}/accounts:
+    parameters:
+      - $ref: '#/components/parameters/UserIdPath'
+    get:
+      tags: [Accounts]
+      summary: Lista as contas de um usuário
+      operationId: listUserAccounts
+      responses:
+        '200':
+          description: Contas do usuário
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountListResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/users/{user_id}/reports/transactions:
+    parameters:
+      - $ref: '#/components/parameters/UserIdPath'
+    get:
+      tags: [Reports]
+      summary: Obtém o relatório consolidado de transações do usuário
+      description: Retorna JSON por padrão e CSV quando `format=csv` ou o cliente solicita `text/csv`.
+      operationId: getUserTransactionsReport
+      parameters:
+        - $ref: '#/components/parameters/FormatQuery'
+      responses:
+        '200':
+          description: Relatório em JSON ou CSV
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserTransactionsReportResponse'
+            text/csv:
+              schema:
+                type: string
+                format: binary
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '406':
+          $ref: '#/components/responses/NotAcceptable'
+
+  /api/v1/accounts:
+    post:
+      tags: [Accounts]
+      summary: Cria uma conta
+      description: O número da conta e o saldo inicial são gerados/controlados pela aplicação; não são campos de entrada.
+      operationId: createAccount
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountCreateBody'
+            example:
+              account:
+                user_id: 1
+                agency_number: '0001'
+      responses:
+        '201':
+          description: Conta criada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/v1/accounts/{id}:
+    parameters:
+      - $ref: '#/components/parameters/AccountId'
+    get:
+      tags: [Accounts]
+      summary: Consulta uma conta
+      operationId: getAccount
+      responses:
+        '200':
+          description: Conta encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Accounts]
+      summary: Encerra uma conta
+      description: Apesar do método DELETE, a implementação atual faz uma transição para `closed` e não remove o registro.
+      operationId: closeAccount
+      responses:
+        '204':
+          description: Conta encerrada; resposta sem corpo
+        '400':
+          description: Conta não pode ser encerrada enquanto possui saldo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: Conta já encerrada ou erro de validação
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/accounts/{id}/block_fraud:
+    parameters:
+      - $ref: '#/components/parameters/AccountId'
+    patch:
+      tags: [Accounts]
+      summary: Bloqueia uma conta por suspeita de fraude
+      operationId: blockAccountForFraud
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FraudBlockBody'
+            example:
+              reason: Suspected phishing attack
+      responses:
+        '200':
+          description: Conta marcada como bloqueada por fraude
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/v1/accounts/{id}/unblock_fraud:
+    parameters:
+      - $ref: '#/components/parameters/AccountId'
+    patch:
+      tags: [Accounts]
+      summary: Remove o bloqueio por fraude
+      operationId: unblockAccountForFraud
+      responses:
+        '200':
+          description: Conta desbloqueada para fraude
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/v1/accounts/{account_id}/pix_keys:
+    parameters:
+      - $ref: '#/components/parameters/AccountIdPath'
+    get:
+      tags: [PIX keys]
+      summary: Lista as chaves PIX ativas de uma conta
+      operationId: listPixKeys
+      responses:
+        '200':
+          description: Chaves ativas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PixKeyListResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [PIX keys]
+      summary: Registra uma chave PIX
+      description: Para o tipo `random`, o valor pode ser omitido e é gerado pela aplicação atual.
+      operationId: createPixKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PixKeyCreateBody'
+            example:
+              pix_key:
+                key_type: email
+                key_value: recebedor@example.com
+      responses:
+        '201':
+          description: Chave registrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PixKeyResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/v1/pix_keys/{id}:
+    parameters:
+      - $ref: '#/components/parameters/PixKeyId'
+    delete:
+      tags: [PIX keys]
+      summary: Cancela uma chave PIX
+      description: A implementação atual faz soft-delete, alterando o status para `cancelled`.
+      operationId: cancelPixKey
+      responses:
+        '204':
+          description: Chave cancelada; resposta sem corpo
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/v1/accounts/{account_id}/transfers:
+    parameters:
+      - $ref: '#/components/parameters/AccountIdPath'
+    get:
+      tags: [Transfers]
+      summary: Lista transferências de uma conta
+      operationId: listAccountTransfers
+      parameters:
+        - name: page
+          in: query
+          description: Página desejada; valores ausentes usam 1. Valores inválidos são normalizados pela implementação atual.
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: per_page
+          in: query
+          description: Itens por página; a implementação limita o valor a 100.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: start_date
+          in: query
+          description: Data/hora inicial inclusiva em `YYYY-MM-DD` ou ISO 8601.
+          schema:
+            type: string
+            format: date-time
+            example: '2026-09-01'
+        - name: end_date
+          in: query
+          description: Data/hora final inclusiva em `YYYY-MM-DD` ou ISO 8601.
+          schema:
+            type: string
+            format: date-time
+            example: '2026-09-30'
+        - name: status
+          in: query
+          description: Filtro operacional da listagem.
+          schema:
+            type: string
+            enum: [completed, cancelled, pending]
+      responses:
+        '200':
+          description: Transferências paginadas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountTransfersResponse'
+        '400':
+          description: Filtro inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DirectErrorResponse'
+        '404':
+          description: Conta não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DirectErrorResponse'
+
+  /api/v1/accounts/{account_id}/reports/statement:
+    parameters:
+      - $ref: '#/components/parameters/AccountIdPath'
+    get:
+      tags: [Reports]
+      summary: Obtém o extrato de uma conta
+      description: 'Retorna o extrato em JSON por padrão ou CSV com `format=csv`/`Accept: text/csv`. Use `month/year` ou `start_date/end_date`.'
+      operationId: getAccountStatement
+      parameters:
+        - name: month
+          in: query
+          description: Mês do período, de 1 a 12.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 12
+        - name: year
+          in: query
+          description: Ano do período.
+          schema:
+            type: integer
+            minimum: 1
+        - name: start_date
+          in: query
+          description: Data inicial do período em `YYYY-MM-DD`.
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          description: Data final do período em `YYYY-MM-DD`.
+          schema:
+            type: string
+            format: date
+        - $ref: '#/components/parameters/FormatQuery'
+      responses:
+        '200':
+          description: Extrato em JSON ou CSV
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountStatementResponse'
+            text/csv:
+              schema:
+                type: string
+                format: binary
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/v1/transfers:
+    post:
+      tags: [Transfers]
+      summary: Inicia uma transferência por chave PIX
+      description: |
+        A aplicação atual aceita o payload dentro de `transfer` e também no topo.
+        O contrato recomendado usa `transfer`. A operação é síncrona no estado
+        atual e normalmente retorna `completed`.
+      operationId: createTransfer
+      parameters:
+        - name: X-Idempotency-Key
+          in: header
+          description: Atualmente também é usado como `end_to_end_id`; essa sobreposição está registrada na auditoria.
+          required: false
+          schema:
+            type: string
+            minLength: 32
+            maxLength: 32
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferCreateBody'
+            example:
+              transfer:
+                source_account_id: 1
+                pix_key: recebedor@example.com
+                amount: '50.00'
+                description: Pagamento do jantar
+                end_to_end_id: E01011010202609231200abcde123456
+      responses:
+        '200':
+          description: Repetição detectada pela chave de idempotência atual
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferResponse'
+        '201':
+          description: Transferência criada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferResponse'
+        '422':
+          $ref: '#/components/responses/BusinessError'
+
+  /api/v1/transfers/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: ID numérico do banco ou EndToEndId iniciado por `E`.
+        schema:
+          type: string
+        example: '123'
+    get:
+      tags: [Transfers]
+      summary: Consulta o comprovante de uma transferência
+      operationId: getTransfer
+      responses:
+        '200':
+          description: Comprovante encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/transfers/{id}/cancel:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: ID numérico da transação.
+        schema:
+          type: integer
+          minimum: 1
+    post:
+      tags: [Transfers]
+      summary: Cancela uma transferência em processamento
+      description: Não é uma devolução Pix/MED; no comportamento atual só transações `processing` podem ser canceladas.
+      operationId: cancelTransfer
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelTransferBody'
+            example:
+              reason: Cancelamento solicitado pelo cliente
+      responses:
+        '200':
+          description: Transferência cancelada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/BusinessError'
+
+components:
+  parameters:
+    UserId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    UserIdPath:
+      name: user_id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    AccountId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    AccountIdPath:
+      name: account_id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    PixKeyId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    FormatQuery:
+      name: format
+      in: query
+      required: false
+      schema:
+        type: string
+        enum: [json, csv]
+        default: json
+
+  responses:
+    BadRequest:
+      description: Parâmetro obrigatório ausente ou inválido
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Recurso não encontrado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            data: null
+            error: Record not found
+    ValidationError:
+      description: Falha de validação de domínio
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    BusinessError:
+      description: Operação rejeitada por regra de negócio
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotAcceptable:
+      description: Formato solicitado não suportado
+
+  schemas:
+    MoneyValue:
+      description: Valor monetário; a API atual alterna entre número e string decimal.
+      oneOf:
+        - type: string
+          pattern: '^\d+(\.\d+)?$'
+          example: '50.00'
+        - type: number
+          format: double
+          example: 50.0
+
+    User:
+      type: object
+      required: [id, name, email, doc_id, created_at, updated_at]
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: João da Silva
+        email:
+          type: string
+          format: email
+          example: joao@example.com
+        doc_id:
+          type: string
+          description: CPF ou CNPJ normalizado, sem pontuação.
+          pattern: '^\d{11}(\d{3})?$'
+          example: '52998224725'
+        phone:
+          type: [string, 'null']
+          pattern: '^\+55\d{10,11}$'
+          example: '+5585999999999'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    UserCreate:
+      type: object
+      required: [user]
+      properties:
+        user:
+          type: object
+          required: [name, email, doc_id]
+          properties:
+            name: {type: string, minLength: 1}
+            email: {type: string, format: email}
+            doc_id: {type: string, pattern: '^\d{11}(\d{3})?$'}
+            phone: {type: string, pattern: '^\+55\d{10,11}$'}
+
+    UserUpdateBody:
+      type: object
+      required: [user]
+      properties:
+        user:
+          type: object
+          properties:
+            name: {type: string, minLength: 1}
+            email: {type: string, format: email}
+            doc_id: {type: string, pattern: '^\d{11}(\d{3})?$'}
+            phone: {type: [string, 'null'], pattern: '^\+55\d{10,11}$'}
+
+    Account:
+      type: object
+      required: [id, user_id, account_number, agency_number, balance, status, fraud_blocked, created_at, updated_at]
+      properties:
+        id: {type: integer, example: 1}
+        user_id: {type: integer, example: 1}
+        account_number: {type: string, example: '123456'}
+        agency_number: {type: string, maxLength: 10, example: '0001'}
+        balance: {$ref: '#/components/schemas/MoneyValue'}
+        status:
+          type: string
+          enum: [active, blocked, closed]
+        fraud_blocked: {type: boolean}
+        fraud_blocked_at: {type: [string, 'null'], format: date-time}
+        fraud_block_reason: {type: [string, 'null'], maxLength: 255}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+
+    AccountCreateBody:
+      type: object
+      required: [account]
+      properties:
+        account:
+          type: object
+          required: [user_id]
+          properties:
+            user_id: {type: integer, minimum: 1}
+            agency_number: {type: string, maxLength: 10, default: '0001'}
+
+    FraudBlockBody:
+      type: object
+      required: [reason]
+      properties:
+        reason: {type: string, minLength: 1, maxLength: 255}
+
+    PixKey:
+      type: object
+      required: [id, account_id, key_type, key_value, status, created_at, updated_at]
+      properties:
+        id: {type: integer, example: 1}
+        account_id: {type: integer, example: 1}
+        key_type:
+          type: string
+          enum: [cpf, cnpj, email, phone, random]
+        key_value:
+          type: string
+          maxLength: 77
+          description: CPF/CNPJ normalizado, e-mail minúsculo, telefone E.164 ou UUID da chave aleatória.
+        status:
+          type: string
+          enum: [active, suspended, cancelled]
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+
+    PixKeyCreateBody:
+      type: object
+      required: [pix_key]
+      properties:
+        pix_key:
+          type: object
+          required: [key_type]
+          properties:
+            key_type:
+              type: string
+              enum: [cpf, cnpj, email, phone, random]
+            key_value:
+              type: string
+              maxLength: 77
+
+    TransferRequest:
+      type: object
+      required: [source_account_id, pix_key, amount]
+      properties:
+        source_account_id: {type: integer, minimum: 1}
+        pix_key: {type: string, minLength: 1, maxLength: 77}
+        amount:
+          oneOf:
+            - type: string
+              pattern: '^\d+(\.\d{1,2})?$'
+            - type: number
+              exclusiveMinimum: 0
+          description: Deve ser positivo; a implementação utiliza decimal internamente.
+        description: {type: [string, 'null'], maxLength: 140}
+        end_to_end_id:
+          type: string
+          minLength: 32
+          maxLength: 32
+
+    TransferCreateBody:
+      oneOf:
+        - type: object
+          required: [transfer]
+          properties:
+            transfer:
+              $ref: '#/components/schemas/TransferRequest'
+        - $ref: '#/components/schemas/TransferRequest'
+
+    CancelTransferBody:
+      type: object
+      properties:
+        reason: {type: string, maxLength: 255}
+
+    SenderReceiver:
+      type: object
+      required: [account_id, account_number, agency, user_name, doc_id]
+      properties:
+        account_id: {type: integer}
+        account_number: {type: string}
+        agency: {type: string}
+        user_name: {type: string}
+        doc_id:
+          type: string
+          description: Atualmente retornado sem máscara; revisar conforme a auditoria.
+
+    TransferReceipt:
+      type: object
+      required: [id, end_to_end_id, amount, status, pix_key_used, created_at, sender, receiver]
+      properties:
+        id: {type: integer}
+        end_to_end_id: {type: string, minLength: 32, maxLength: 32}
+        amount: {$ref: '#/components/schemas/MoneyValue'}
+        description: {type: [string, 'null']}
+        status:
+          type: string
+          enum: [processing, completed, failed, cancelled]
+        cancelled_at: {type: [string, 'null'], format: date-time}
+        pix_key_used: {type: string, maxLength: 77}
+        created_at: {type: string, format: date-time}
+        sender: {$ref: '#/components/schemas/SenderReceiver'}
+        receiver: {$ref: '#/components/schemas/SenderReceiver'}
+
+    Counterparty:
+      type: object
+      required: [name, doc_id]
+      properties:
+        name: {type: [string, 'null']}
+        doc_id: {type: [string, 'null'], description: Documento mascarado nos extratos.}
+
+    AccountTransfer:
+      type: object
+      required: [id, amount, operation_type, status, end_to_end_id, created_at, counterparty]
+      properties:
+        id: {type: integer}
+        amount: {$ref: '#/components/schemas/MoneyValue'}
+        operation_type:
+          type: string
+          enum: [debit, credit]
+        status:
+          type: string
+          enum: [processing, completed, failed, cancelled]
+        end_to_end_id: {type: string, minLength: 32, maxLength: 32}
+        created_at: {type: string, format: date-time}
+        counterparty: {$ref: '#/components/schemas/Counterparty'}
+
+    Pagination:
+      type: object
+      required: [current_page, per_page, total_count, total_pages]
+      properties:
+        current_page: {type: integer, minimum: 1}
+        per_page: {type: integer, minimum: 1, maximum: 100}
+        total_count: {type: integer, minimum: 0}
+        total_pages: {type: integer, minimum: 1}
+
+    StatementPeriod:
+      type: object
+      required: [start_date, end_date, month, year]
+      properties:
+        start_date: {type: string, format: date}
+        end_date: {type: string, format: date}
+        month: {type: [integer, 'null'], minimum: 1, maximum: 12}
+        year: {type: [integer, 'null'], minimum: 1}
+
+    StatementTransaction:
+      type: object
+      required: [id, end_to_end_id, amount, operation_type, status, created_at, counterparty]
+      properties:
+        id: {type: integer}
+        end_to_end_id: {type: string, minLength: 32, maxLength: 32}
+        amount: {$ref: '#/components/schemas/MoneyValue'}
+        operation_type: {type: string, enum: [debit, credit]}
+        status: {type: string, enum: [processing, completed, failed, cancelled]}
+        created_at: {type: string, format: date-time}
+        description: {type: [string, 'null']}
+        pix_key_used: {type: string, maxLength: 77}
+        counterparty: {$ref: '#/components/schemas/Counterparty'}
+
+    AccountStatement:
+      type: object
+      required: [account_id, account_number, agency_number, period, opening_balance, total_inflows, total_outflows, closing_balance, reconciliation_valid, transactions_count, transactions]
+      properties:
+        account_id: {type: integer}
+        account_number: {type: string}
+        agency_number: {type: string}
+        period: {$ref: '#/components/schemas/StatementPeriod'}
+        opening_balance: {$ref: '#/components/schemas/MoneyValue'}
+        total_inflows: {$ref: '#/components/schemas/MoneyValue'}
+        total_outflows: {$ref: '#/components/schemas/MoneyValue'}
+        closing_balance: {$ref: '#/components/schemas/MoneyValue'}
+        reconciliation_valid: {type: boolean}
+        transactions_count: {type: integer, minimum: 0}
+        transactions:
+          type: array
+          items: {$ref: '#/components/schemas/StatementTransaction'}
+
+    ReportMetrics:
+      type: object
+      required: [total_transactions_count, total_sent_amount, total_received_amount, net_balance_change, average_ticket_amount]
+      properties:
+        total_transactions_count: {type: integer, minimum: 0}
+        total_sent_amount: {$ref: '#/components/schemas/MoneyValue'}
+        total_received_amount: {$ref: '#/components/schemas/MoneyValue'}
+        net_balance_change: {$ref: '#/components/schemas/MoneyValue'}
+        average_ticket_amount: {$ref: '#/components/schemas/MoneyValue'}
+
+    UserReportAccount:
+      allOf:
+        - type: object
+          required: [account_id, account_number, agency_number, status]
+          properties:
+            account_id: {type: integer}
+            account_number: {type: string}
+            agency_number: {type: string}
+            status: {type: string, enum: [active, blocked, closed]}
+        - $ref: '#/components/schemas/ReportMetrics'
+
+    UserTransactionsReport:
+      type: object
+      required: [user_id, summary, accounts]
+      properties:
+        user_id: {type: integer}
+        summary: {$ref: '#/components/schemas/ReportMetrics'}
+        accounts:
+          type: array
+          items: {$ref: '#/components/schemas/UserReportAccount'}
+
+    ErrorValue:
+      oneOf:
+        - type: string
+        - type: object
+          additionalProperties:
+            type: array
+            items: {type: string}
+
+    ErrorResponse:
+      type: object
+      required: [data, error]
+      properties:
+        data: {type: 'null'}
+        error: {$ref: '#/components/schemas/ErrorValue'}
+
+    DirectErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error: {type: string}
+
+    UserResponse:
+      type: object
+      required: [data, error]
+      properties:
+        data: {$ref: '#/components/schemas/User'}
+        error: {type: 'null'}
+
+    AccountResponse:
+      type: object
+      required: [data, error]
+      properties:
+        data: {$ref: '#/components/schemas/Account'}
+        error: {type: 'null'}
+
+    AccountListResponse:
+      type: object
+      required: [data, error]
+      properties:
+        data:
+          type: array
+          items: {$ref: '#/components/schemas/Account'}
+        error: {type: 'null'}
+
+    PixKeyResponse:
+      type: object
+      required: [data, error]
+      properties:
+        data: {$ref: '#/components/schemas/PixKey'}
+        error: {type: 'null'}
+
+    PixKeyListResponse:
+      type: object
+      required: [data, error]
+      properties:
+        data:
+          type: array
+          items: {$ref: '#/components/schemas/PixKey'}
+        error: {type: 'null'}
+
+    TransferResponse:
+      type: object
+      required: [data, error]
+      properties:
+        data: {$ref: '#/components/schemas/TransferReceipt'}
+        error: {type: 'null'}
+
+    AccountTransfersResponse:
+      type: object
+      required: [transactions, pagination]
+      properties:
+        transactions:
+          type: array
+          items: {$ref: '#/components/schemas/AccountTransfer'}
+        pagination: {$ref: '#/components/schemas/Pagination'}
+
+    AccountStatementResponse:
+      type: object
+      required: [data, error]
+      properties:
+        data: {$ref: '#/components/schemas/AccountStatement'}
+        error: {type: 'null'}
+
+    UserTransactionsReportResponse:
+      type: object
+      required: [data, error]
+      properties:
+        data: {$ref: '#/components/schemas/UserTransactionsReport'}
+        error: {type: 'null'}

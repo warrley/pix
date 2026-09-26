@@ -47,6 +47,12 @@ RUN bundle install && \
 # Copy application code
 COPY . .
 
+# Keep the OpenAPI contract next to the static Swagger UI so reverse proxies
+# and static file servers can serve both documentation assets without relying
+# on a dynamic Rails route.
+RUN cp docs/openapi.yaml public/openapi.yaml && \
+    cp docs/openapi.yaml public/api-docs/openapi.yaml
+
 # Precompile bootsnap code for faster boot times.
 # -j 1 disable parallel compilation to avoid a QEMU bug: https://github.com/rails/bootsnap/issues/495
 RUN bundle exec bootsnap precompile -j 1 app/ lib/
