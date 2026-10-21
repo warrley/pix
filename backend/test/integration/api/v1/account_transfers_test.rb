@@ -6,6 +6,7 @@ class Api::V1::AccountTransfersTest < ActionDispatch::IntegrationTest
     @user.save!(validate: false)
 
     @account = Account.create!(user: @user, account_number: "11111", balance: 1000.0)
+    authenticate_requests_as(@user)
 
     receiver_user = User.new(name: "Bob", email: "bob_statement@example.com", doc_id: "33734063071")
     receiver_user.save!(validate: false)

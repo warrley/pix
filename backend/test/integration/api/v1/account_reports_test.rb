@@ -10,6 +10,7 @@ class Api::V1::AccountReportsTest < ActionDispatch::IntegrationTest
 
     @account1 = Account.create!(user: @user1, account_number: "88001", balance: 1000.0)
     @account2 = Account.create!(user: @user2, account_number: "88002", balance: 500.0)
+    authenticate_requests_as(@user1)
 
     @tx1 = Transaction.create!(
       amount: 150.0,

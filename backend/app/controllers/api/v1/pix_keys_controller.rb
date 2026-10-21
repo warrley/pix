@@ -3,6 +3,10 @@ module Api
     class PixKeysController < ApplicationController
       before_action :set_account, only: [ :create, :index ]
       before_action :set_pix_key, only: [ :destroy ]
+      before_action -> { require_api_scope!("pix_keys:write") }, only: [ :create, :destroy ]
+      before_action -> { require_api_scope!("pix_keys:read") }, only: :index
+      before_action -> { authorize_account!(@account) }, only: [ :create, :index ]
+      before_action -> { authorize_account!(@pix_key.account) }, only: :destroy
 
       def create
         @pix_key = @account.pix_keys.build(pix_key_params)

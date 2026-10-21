@@ -10,6 +10,8 @@ Rails.application.routes.draw do
 
   namespace :api do
     namespace :v1 do
+      post "auth/token", to: "auth#create", as: :auth_token
+      delete "auth/token", to: "auth#destroy"
       resources :users, only: [ :create, :show, :update, :destroy ] do
         resources :accounts, only: [ :index ]
       end

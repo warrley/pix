@@ -58,6 +58,7 @@ class TransactionNotificationJobTest < ActiveSupport::TestCase
     assert_equal @destination_user.name, calls[0][1][:counterparty_name]
     assert_equal @source_user.name, calls[1][1][:counterparty_name]
     calls.each do |_, payload|
+      assert_equal "transaction-#{@transaction.id}-completed", payload[:event_id]
       assert_equal "completed", payload[:event_type]
       assert_equal "100.00", payload[:amount]
       assert_equal @transaction.end_to_end_id, payload[:end_to_end_id]

@@ -1,7 +1,7 @@
 require "test_helper"
 
 class Notifications::LoggerNotifierTest < ActiveSupport::TestCase
-  test "logs the notification context and returns success" do
+  test "logs only non-sensitive notification context and returns success" do
     user = users(:one)
     payload = {
       event_type: "completed",
@@ -21,9 +21,10 @@ class Notifications::LoggerNotifierTest < ActiveSupport::TestCase
 
     assert_equal 1, messages.size
     assert_includes messages.first, "completed"
-    assert_includes messages.first, payload[:end_to_end_id]
-    assert_includes messages.first, user.email
-    assert_includes messages.first, user.phone
+    assert_includes messages.first, "recipient_id=#{user.id}"
+    refute_includes messages.first, payload[:end_to_end_id]
+    refute_includes messages.first, user.email
+    refute_includes messages.first, user.phone
     refute_includes messages.first, user.doc_id
   end
 end
