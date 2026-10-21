@@ -42,10 +42,10 @@ class Api::V1::AccountReportsTest < ActionDispatch::IntegrationTest
 
     assert_equal @account1.id, data["account_id"]
     assert_equal "88001", data["account_number"]
-    assert_equal "900.0", data["opening_balance"]
-    assert_equal "250.0", data["total_inflows"]
-    assert_equal "150.0", data["total_outflows"]
-    assert_equal "1000.0", data["closing_balance"]
+    assert_equal "900.00", data["opening_balance"]
+    assert_equal "250.00", data["total_inflows"]
+    assert_equal "150.00", data["total_outflows"]
+    assert_equal "1000.00", data["closing_balance"]
     assert_equal true, data["reconciliation_valid"]
     assert_equal 2, data["transactions_count"]
     assert_equal 2, data["transactions"].size
@@ -57,8 +57,8 @@ class Api::V1::AccountReportsTest < ActionDispatch::IntegrationTest
     assert_response :ok
     assert_match(/text\/csv/, response.headers["Content-Type"])
     assert_includes response.body, "PIX STATEMENT REPORT"
-    assert_includes response.body, "Opening Balance,900.0"
-    assert_includes response.body, "Closing Balance,1000.0"
+    assert_includes response.body, "Opening Balance,900.00"
+    assert_includes response.body, "Closing Balance,1000.00"
     assert_includes response.body, "E01011010202609101200abcde123451"
   end
 
@@ -73,8 +73,15 @@ class Api::V1::AccountReportsTest < ActionDispatch::IntegrationTest
   test "GET /api/v1/accounts/:account_id/reports/statement returns 422 when parameters are invalid" do
     get "/api/v1/accounts/#{@account1.id}/reports/statement?month=15", as: :json
 
-    assert_response :unprocessable_entity
+    assert_response :bad_request
     assert_nil response.parsed_body["data"]
-    assert_equal "Invalid month or year", response.parsed_body["error"]
+    assert_equal "period.invalid", response.parsed_body["code"]
+  end
+
+  test "GET statement rejects conflicting period filters" do
+    get "/api/v1/accounts/#{@account1.id}/reports/statement?month=9&year=2026&start_date=2026-09-01&end_date=2026-09-30", as: :json
+
+    assert_response :bad_request
+    assert_equal "period.conflicting_filters", response.parsed_body["code"]
   end
 end

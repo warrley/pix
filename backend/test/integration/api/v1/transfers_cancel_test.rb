@@ -23,7 +23,9 @@ class Api::V1::TransfersCancelTest < ActionDispatch::IntegrationTest
   end
 
   test "should cancel a pending transaction and return 200 OK" do
-    post "/api/v1/transfers/#{@transaction.id}/cancel", params: { reason: "Customer requested cancellation" }
+    post "/api/v1/transfers/#{@transaction.id}/cancel",
+      params: { reason: "Customer requested cancellation" },
+      as: :json
 
     assert_response :success
 
@@ -38,22 +40,22 @@ class Api::V1::TransfersCancelTest < ActionDispatch::IntegrationTest
   end
 
   test "should return 404 if transaction not found" do
-    post "/api/v1/transfers/-1/cancel"
+    post "/api/v1/transfers/-1/cancel", as: :json
 
     assert_response :not_found
 
     json_response = JSON.parse(response.body)
-    assert_equal "Transaction not found", json_response["error"]
+    assert_equal "transaction.not_found", json_response["code"]
   end
 
-  test "should return 422 if transaction cannot be cancelled" do
+  test "should return 409 if transaction cannot be cancelled" do
     @transaction.update!(status: :completed)
 
-    post "/api/v1/transfers/#{@transaction.id}/cancel"
+    post "/api/v1/transfers/#{@transaction.id}/cancel", as: :json
 
-    assert_response :unprocessable_entity
+    assert_response :conflict
 
     json_response = JSON.parse(response.body)
-    assert_equal "Cannot cancel a completed transaction", json_response["error"]
+    assert_equal "transaction.already_completed", json_response["code"]
   end
 end

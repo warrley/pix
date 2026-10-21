@@ -18,7 +18,7 @@ class Pix::TransferServiceTest < ActiveSupport::TestCase
     result = Pix::TransferService.call(
       source_account_id: @source_account.id,
       pix_key: "receiver_svc@example.com",
-      amount: 150.00,
+      amount_cents: 15_000,
       description: "Payment for services"
     )
 
@@ -26,6 +26,7 @@ class Pix::TransferServiceTest < ActiveSupport::TestCase
     assert_not_nil result.transaction
     assert_equal "completed", result.transaction.status
     assert_equal 150.00, result.transaction.amount
+    assert_equal 15_000, result.transaction.amount_cents
     assert_equal "Payment for services", result.transaction.description
     assert_match(/\AE01011010\d{12}[a-z0-9]{11}\z/i, result.transaction.end_to_end_id)
     assert_equal 850.00, @source_account.reload.balance
@@ -43,31 +44,57 @@ class Pix::TransferServiceTest < ActiveSupport::TestCase
     result = Pix::TransferService.call(
       source_account_id: @source_account.id,
       pix_key: "receiver_svc@example.com",
-      amount: 0.00
+      amount_cents: 0
     )
 
     assert_not result.success?
-    assert_equal "amount must be greater than zero", result.error
+    assert_equal "amount.invalid", result.error.code
     assert_equal 1000.00, @source_account.reload.balance
     assert_equal 200.00, @dest_account.reload.balance
+  end
+
+  test "returns a typed error for malformed service amounts" do
+    result = Pix::TransferService.call(
+      source_account_id: @source_account.id,
+      pix_key: "receiver_svc@example.com",
+      amount_cents: 100.1
+    )
+
+    assert_not result.success?
+    assert_equal "amount.invalid", result.error.code
+    assert_equal :unprocessable_entity, result.error.http_status
   end
 
   test "rejects transfer with insufficient funds without modifying balances and records failure" do
     result = Pix::TransferService.call(
       source_account_id: @source_account.id,
       pix_key: "receiver_svc@example.com",
-      amount: 1500.00
+      amount_cents: 150_000
     )
 
     assert_not result.success?
-    assert_equal "insufficient funds", result.error
+    assert_equal "transfer.insufficient_funds", result.error.code
     assert_equal 1000.00, @source_account.reload.balance
     assert_equal 200.00, @dest_account.reload.balance
 
     assert_not_nil result.transaction
     assert_equal "failed", result.transaction.status
-    assert_equal "insufficient funds", result.transaction.failure_reason
+    assert_equal "Insufficient funds", result.transaction.failure_reason
     assert_enqueued_with(job: TransactionNotificationJob, args: [ result.transaction.id, "failed" ])
+  end
+
+  test "rejects transfers that exceed the configured daily limit" do
+    @source_account.update!(balance: 2_000.00)
+
+    result = Pix::TransferService.call(
+      source_account_id: @source_account.id,
+      pix_key: "receiver_svc@example.com",
+      amount_cents: 100_001
+    )
+
+    assert_not result.success?
+    assert_equal "transfer.daily_limit_exceeded", result.error.code
+    assert_equal 2_000.00, @source_account.reload.balance
   end
 
   test "keeps a completed transfer when notification enqueueing fails" do
@@ -76,7 +103,7 @@ class Pix::TransferServiceTest < ActiveSupport::TestCase
       result = Pix::TransferService.call(
         source_account_id: @source_account.id,
         pix_key: "receiver_svc@example.com",
-        amount: 150.00
+        amount_cents: 15_000
       )
     end
 
@@ -92,11 +119,11 @@ class Pix::TransferServiceTest < ActiveSupport::TestCase
     result = Pix::TransferService.call(
       source_account_id: @source_account.id,
       pix_key: "receiver_svc@example.com",
-      amount: 100.00
+      amount_cents: 10_000
     )
 
     assert_not result.success?
-    assert_equal "source account is blocked", result.error
+    assert_equal "account.blocked", result.error.code
     assert_equal 1000.00, @source_account.reload.balance
   end
 
@@ -106,11 +133,11 @@ class Pix::TransferServiceTest < ActiveSupport::TestCase
     result = Pix::TransferService.call(
       source_account_id: @source_account.id,
       pix_key: "receiver_svc@example.com",
-      amount: 100.00
+      amount_cents: 10_000
     )
 
     assert_not result.success?
-    assert_equal "source account is closed", result.error
+    assert_equal "account.closed", result.error.code
   end
 
   test "allows transfer to blocked destination account per BACEN compliance" do
@@ -119,7 +146,7 @@ class Pix::TransferServiceTest < ActiveSupport::TestCase
     result = Pix::TransferService.call(
       source_account_id: @source_account.id,
       pix_key: "receiver_svc@example.com",
-      amount: 100.00
+      amount_cents: 10_000
     )
 
     assert result.success?
@@ -133,11 +160,11 @@ class Pix::TransferServiceTest < ActiveSupport::TestCase
     result = Pix::TransferService.call(
       source_account_id: @source_account.id,
       pix_key: "receiver_svc@example.com",
-      amount: 100.00
+      amount_cents: 10_000
     )
 
     assert_not result.success?
-    assert_equal "destination account is closed", result.error
+    assert_equal "account.closed", result.error.code
     assert_equal 1000.00, @source_account.reload.balance
   end
 
@@ -147,11 +174,11 @@ class Pix::TransferServiceTest < ActiveSupport::TestCase
     result = Pix::TransferService.call(
       source_account_id: @source_account.id,
       pix_key: "receiver_svc@example.com",
-      amount: 100.00
+      amount_cents: 10_000
     )
 
     assert_not result.success?
-    assert_equal "PIX key is not active", result.error
+    assert_equal "pix_key.not_active", result.error.code
   end
 
   test "rejects self-transfer" do
@@ -160,11 +187,11 @@ class Pix::TransferServiceTest < ActiveSupport::TestCase
     result = Pix::TransferService.call(
       source_account_id: @source_account.id,
       pix_key: "sender_svc@example.com",
-      amount: 50.00
+      amount_cents: 5_000
     )
 
     assert_not result.success?
-    assert_equal "self-transfers are not allowed", result.error
+    assert_equal "transfer.self_transfer", result.error.code
     assert_equal 1000.00, @source_account.reload.balance
   end
 
@@ -179,7 +206,7 @@ class Pix::TransferServiceTest < ActiveSupport::TestCase
           results << Pix::TransferService.call(
             source_account_id: @source_account.id,
             pix_key: "receiver_svc@example.com",
-            amount: 80.00
+            amount_cents: 8_000
           )
         end
       end
@@ -208,11 +235,11 @@ class Pix::TransferServiceTest < ActiveSupport::TestCase
     result = Pix::TransferService.call(
       source_account_id: @source_account.id,
       pix_key: "receiver_svc@example.com",
-      amount: 100.00
+      amount_cents: 10_000
     )
 
     assert_not result.success?
-    assert_equal "Source account is blocked for suspected fraud", result.error
+    assert_equal "account.fraud_blocked", result.error.code
     assert_equal 1000.00, @source_account.reload.balance
   end
 
@@ -222,11 +249,11 @@ class Pix::TransferServiceTest < ActiveSupport::TestCase
     result = Pix::TransferService.call(
       source_account_id: @source_account.id,
       pix_key: "receiver_svc@example.com",
-      amount: 100.00
+      amount_cents: 10_000
     )
 
     assert_not result.success?
-    assert_equal "Destination account is blocked for suspected fraud", result.error
+    assert_equal "account.fraud_blocked", result.error.code
     assert_equal 1000.00, @source_account.reload.balance
     assert_equal 200.00, @dest_account.reload.balance
   end

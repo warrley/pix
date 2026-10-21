@@ -24,11 +24,11 @@ module Api
 
       def destroy
         if @account.status == "closed"
-          return render_error("Account is already closed", status: :unprocessable_entity)
+          return render_error("Account is already closed", status: :conflict, code: "account.already_closed")
         end
 
         if @account.balance > 0
-          return render_error("Cannot close account with existing balance", status: :bad_request)
+          return render_error("Cannot close account with existing balance", status: :conflict, code: "account.balance_not_zero")
         end
 
         if @account.update(status: "closed")

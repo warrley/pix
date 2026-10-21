@@ -25,10 +25,10 @@ class Api::V1::UserReportsTest < ActionDispatch::IntegrationTest
     assert_nil body["error"]
     assert_equal @user.id, body.dig("data", "user_id")
     assert_equal 4, body.dig("data", "summary", "total_transactions_count")
-    assert_equal 185.0, body.dig("data", "summary", "total_sent_amount")
-    assert_equal 65.0, body.dig("data", "summary", "total_received_amount")
-    assert_equal(-120.0, body.dig("data", "summary", "net_balance_change"))
-    assert_equal 56.25, body.dig("data", "summary", "average_ticket_amount")
+    assert_equal "185.00", body.dig("data", "summary", "total_sent_amount")
+    assert_equal "65.00", body.dig("data", "summary", "total_received_amount")
+    assert_equal "-120.00", body.dig("data", "summary", "net_balance_change")
+    assert_equal "56.25", body.dig("data", "summary", "average_ticket_amount")
     assert_equal [ @account_one.id, @account_two.id ], body.dig("data", "accounts").pluck("account_id")
     assert_equal @account_one.account_number, body.dig("data", "accounts", 0, "account_number")
     assert body.dig("data", "accounts").none? { |account| account["account_id"] == @external_account.id }
@@ -76,10 +76,10 @@ class Api::V1::UserReportsTest < ActionDispatch::IntegrationTest
     assert_response :ok
     body = response.parsed_body
     assert_equal 0, body.dig("data", "summary", "total_transactions_count")
-    assert_equal 0.0, body.dig("data", "summary", "total_sent_amount")
-    assert_equal 0.0, body.dig("data", "summary", "total_received_amount")
-    assert_equal 0.0, body.dig("data", "summary", "net_balance_change")
-    assert_equal 0.0, body.dig("data", "summary", "average_ticket_amount")
+    assert_equal "0.00", body.dig("data", "summary", "total_sent_amount")
+    assert_equal "0.00", body.dig("data", "summary", "total_received_amount")
+    assert_equal "0.00", body.dig("data", "summary", "net_balance_change")
+    assert_equal "0.00", body.dig("data", "summary", "average_ticket_amount")
     assert_equal 2, body.dig("data", "accounts").size
   end
 

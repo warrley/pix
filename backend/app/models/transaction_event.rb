@@ -7,6 +7,18 @@ class TransactionEvent < ApplicationRecord
   validates :previous_status, length: { maximum: 20 }, allow_nil: true
   validates :current_status, length: { maximum: 20 }
   validates :amount, numericality: true
+
+  def amount
+    Pix::Money.decimal_from_cents(amount_cents)
+  end
+
+  def amount=(value)
+    self.amount_cents = Pix::Money.cents_from_decimal(value)
+  end
+
+  def as_json(options = {})
+    super(options).except("amount_cents").merge("amount" => Pix::Money.format_cents(amount_cents))
+  end
   validates :reason, length: { maximum: 255 }, allow_nil: true
 
   def readonly?

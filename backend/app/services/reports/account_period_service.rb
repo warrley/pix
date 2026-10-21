@@ -18,7 +18,11 @@ module Reports
 
     def call
       account = Account.find_by(id: @account_id)
-      return Result.new(success?: false, data: nil, error: "Account not found") unless account
+      unless account
+        return Result.new(success?: false, data: nil, error: Pix::DomainError.new(
+          code: "account.not_found", message: "Account not found", http_status: :not_found
+        ))
+      end
 
       period = resolve_period
       return Result.new(success?: false, data: nil, error: @period_error) unless period
@@ -30,29 +34,29 @@ module Reports
       # Reverte todas as transações concluídas desde start_time até o momento atual
       completed_debits_since_start = Transaction.where(source_account_id: account.id, status: :completed)
                                                 .where("created_at >= ?", start_time)
-                                                .sum(:amount)
+                                                .sum(:amount_cents)
 
       completed_credits_since_start = Transaction.where(destination_account_id: account.id, status: :completed)
                                                  .where("created_at >= ?", start_time)
-                                                 .sum(:amount)
+                                                 .sum(:amount_cents)
 
-      opening_balance = account.balance + BigDecimal(completed_debits_since_start.to_s) - BigDecimal(completed_credits_since_start.to_s)
+      opening_balance_cents = account.balance_cents + completed_debits_since_start - completed_credits_since_start
 
       # Créditos e débitos concluídos estritamente dentro do período [start_time, end_time]
       period_credits = Transaction.where(destination_account_id: account.id, status: :completed)
                                   .where(created_at: start_time..end_time)
-                                  .sum(:amount)
+                                  .sum(:amount_cents)
 
       period_debits = Transaction.where(source_account_id: account.id, status: :completed)
                                  .where(created_at: start_time..end_time)
-                                 .sum(:amount)
+                                 .sum(:amount_cents)
 
-      total_credits = BigDecimal(period_credits.to_s)
-      total_debits = BigDecimal(period_debits.to_s)
-      closing_balance = opening_balance + total_credits - total_debits
+      total_credits_cents = period_credits
+      total_debits_cents = period_debits
+      closing_balance_cents = opening_balance_cents + total_credits_cents - total_debits_cents
 
       # Validação de conciliação: opening + inflows - outflows == closing
-      reconciliation_valid = (closing_balance == (opening_balance + total_credits - total_debits))
+      reconciliation_valid = (closing_balance_cents == (opening_balance_cents + total_credits_cents - total_debits_cents))
 
       # Lista itemizada de transações no período
       transactions_relation = Transaction.where(source_account_id: account.id)
@@ -68,7 +72,7 @@ module Reports
         {
           id: tx.id,
           end_to_end_id: tx.end_to_end_id,
-          amount: tx.amount,
+          amount: Pix::Money.format_cents(tx.amount_cents),
           operation_type: is_debit ? "debit" : "credit",
           status: tx.status,
           created_at: tx.created_at,
@@ -91,10 +95,10 @@ module Reports
           month: period[:month],
           year: period[:year]
         },
-        opening_balance: opening_balance.to_s("F"),
-        total_inflows: total_credits.to_s("F"),
-        total_outflows: total_debits.to_s("F"),
-        closing_balance: closing_balance.to_s("F"),
+        opening_balance: Pix::Money.format_cents(opening_balance_cents),
+        total_inflows: Pix::Money.format_cents(total_credits_cents),
+        total_outflows: Pix::Money.format_cents(total_debits_cents),
+        closing_balance: Pix::Money.format_cents(closing_balance_cents),
         reconciliation_valid: reconciliation_valid,
         transactions_count: itemized_transactions.size,
         transactions: itemized_transactions
@@ -121,7 +125,7 @@ module Reports
             tx[:end_to_end_id],
             tx[:created_at]&.iso8601,
             tx[:operation_type],
-            tx[:amount].to_s,
+            tx[:amount],
             tx[:status],
             tx[:pix_key_used],
             tx.dig(:counterparty, :name),
@@ -135,12 +139,23 @@ module Reports
     private
 
     def resolve_period
-      if @month_param.present? || @year_param.present?
-        year = (@year_param || Date.current.year).to_i
-        month = (@month_param || Date.current.month).to_i
+      has_month_year = @month_param.present? || @year_param.present?
+      has_date_range = @start_date_param.present? || @end_date_param.present?
+      if has_month_year && has_date_range
+        @period_error = Pix::DomainError.new(code: "period.conflicting_filters", message: "Choose month/year or start_date/end_date", http_status: :bad_request)
+        return nil
+      end
+
+      if has_month_year
+        unless @month_param.present? && @year_param.present? && @month_param.to_s.match?(/\A\d{1,2}\z/) && @year_param.to_s.match?(/\A\d{4}\z/)
+          @period_error = Pix::DomainError.new(code: "period.invalid", message: "month and year must be provided together", http_status: :bad_request)
+          return nil
+        end
+        year = @year_param.to_i
+        month = @month_param.to_i
 
         unless month.between?(1, 12) && year.positive?
-          @period_error = "Invalid month or year"
+          @period_error = Pix::DomainError.new(code: "period.invalid", message: "Invalid month or year", http_status: :bad_request)
           return nil
         end
 
@@ -154,16 +169,16 @@ module Reports
             year: year
           }
         rescue ArgumentError => e
-          @period_error = "Invalid date: #{e.message}"
+          @period_error = Pix::DomainError.new(code: "period.invalid", message: "Invalid date", http_status: :unprocessable_entity)
           nil
         end
-      elsif @start_date_param.present? || @end_date_param.present?
+      elsif has_date_range
         begin
-          start_date = @start_date_param.present? ? Date.parse(@start_date_param.to_s) : Date.new(2000, 1, 1)
-          end_date = @end_date_param.present? ? Date.parse(@end_date_param.to_s) : Date.current
+          start_date = @start_date_param.present? ? Date.iso8601(@start_date_param.to_s) : Date.new(2000, 1, 1)
+          end_date = @end_date_param.present? ? Date.iso8601(@end_date_param.to_s) : Date.current
 
           if start_date > end_date
-            @period_error = "start_date cannot be after end_date"
+            @period_error = Pix::DomainError.new(code: "period.invalid_range", message: "start_date cannot be after end_date", http_status: :bad_request)
             return nil
           end
 
@@ -174,7 +189,7 @@ module Reports
             year: (start_date.year == end_date.year) ? start_date.year : nil
           }
         rescue ArgumentError => e
-          @period_error = "Invalid date format: #{e.message}"
+          @period_error = Pix::DomainError.new(code: "period.invalid", message: "Invalid date format", http_status: :bad_request)
           nil
         end
       else

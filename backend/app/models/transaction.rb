@@ -17,6 +17,18 @@ class Transaction < ApplicationRecord
   validates :failure_reason, length: { maximum: 255 }, allow_nil: true
   validate :prevent_self_transfer
 
+  def amount
+    Pix::Money.decimal_from_cents(amount_cents)
+  end
+
+  def amount=(value)
+    self.amount_cents = Pix::Money.cents_from_decimal(value)
+  end
+
+  def as_json(options = {})
+    super(options).except("amount_cents").merge("amount" => Pix::Money.format_cents(amount_cents))
+  end
+
   private
 
   def prevent_self_transfer

@@ -10,14 +10,14 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_22_010000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_21_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
   create_table "accounts", force: :cascade do |t|
     t.string "account_number", limit: 20, null: false
     t.string "agency_number", limit: 10, default: "0001", null: false
-    t.decimal "balance", precision: 14, scale: 2, default: "0.0", null: false
+    t.bigint "balance_cents", default: 0, null: false
     t.datetime "created_at", null: false
     t.string "fraud_block_reason", limit: 255
     t.boolean "fraud_blocked", default: false, null: false
@@ -28,10 +28,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_22_010000) do
     t.index ["account_number"], name: "index_accounts_on_account_number", unique: true
     t.index ["fraud_blocked"], name: "index_accounts_on_fraud_blocked"
     t.index ["user_id"], name: "index_accounts_on_user_id"
-    t.check_constraint "balance >= 0::numeric", name: "accounts_balance_non_negative"
-    t.check_constraint "status::text = ANY (ARRAY['active'::character varying::text, 'blocked'::character varying::text, 'closed'::character varying::text])", name: "accounts_status_valid"
+    t.check_constraint "balance_cents >= 0", name: "accounts_balance_cents_non_negative"
+    t.check_constraint "status::text = ANY (ARRAY['active'::character varying, 'blocked'::character varying, 'closed'::character varying]::text[])", name: "accounts_status_valid"
   end
 
+  create_table "api_access_tokens", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "expires_at", null: false
+    t.datetime "last_used_at"
+    t.datetime "revoked_at"
+    t.string "scopes", default: [], null: false, array: true
+    t.string "token_digest", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["token_digest"], name: "index_api_access_tokens_on_token_digest", unique: true
+    t.index ["user_id", "expires_at"], name: "index_api_access_tokens_on_user_id_and_expires_at"
+    t.index ["user_id"], name: "index_api_access_tokens_on_user_id"
+  end
   create_table "pix_keys", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.datetime "created_at", null: false
@@ -46,7 +59,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_22_010000) do
   end
 
   create_table "transaction_events", force: :cascade do |t|
-    t.decimal "amount", precision: 14, scale: 2, null: false
+    t.bigint "amount_cents", null: false
     t.datetime "created_at", null: false
     t.string "current_status", limit: 20, null: false
     t.bigint "destination_account_id", null: false
@@ -60,7 +73,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_22_010000) do
   end
 
   create_table "transactions", force: :cascade do |t|
-    t.decimal "amount", precision: 14, scale: 2, null: false
+    t.bigint "amount_cents", null: false
     t.datetime "cancelled_at"
     t.datetime "created_at", null: false
     t.string "description", limit: 140
@@ -76,7 +89,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_22_010000) do
     t.index ["end_to_end_id"], name: "index_transactions_on_end_to_end_id", unique: true
     t.index ["source_account_id", "created_at"], name: "index_transactions_on_source_account_id_and_created_at"
     t.index ["source_account_id"], name: "index_transactions_on_source_account_id"
-    t.check_constraint "amount > 0::numeric", name: "transactions_amount_positive"
+    t.check_constraint "amount_cents > 0", name: "transactions_amount_cents_positive"
     t.check_constraint "source_account_id <> destination_account_id", name: "transactions_no_self_transfer"
     t.check_constraint "status::text = ANY (ARRAY['processing'::character varying, 'completed'::character varying, 'failed'::character varying, 'cancelled'::character varying]::text[])", name: "transactions_status_valid"
   end

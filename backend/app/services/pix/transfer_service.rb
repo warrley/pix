@@ -8,10 +8,10 @@ module Pix
       new(...).call
     end
 
-    def initialize(source_account_id:, pix_key:, amount:, description: nil, end_to_end_id: nil)
+    def initialize(source_account_id:, pix_key:, amount_cents:, description: nil, end_to_end_id: nil)
       @source_account_id = source_account_id
       @pix_key_raw = pix_key.to_s.strip
-      @amount = BigDecimal(amount.to_s)
+      @amount_cents = amount_cents
       @description = description
       @end_to_end_id = end_to_end_id.presence || generate_end_to_end_id
     end
@@ -19,7 +19,7 @@ module Pix
     def call
       validation_error = validate_pre_transfer
       if validation_error
-        failed_tx = record_failed_transaction(validation_error)
+        failed_tx = record_failed_transaction(validation_error.message)
         enqueue_notification(failed_tx, "failed")
         return Result.new(success?: false, transaction: failed_tx, error: validation_error)
       end
@@ -36,47 +36,58 @@ module Pix
           locked_destination = (locked_first.id == @destination_account.id) ? locked_first : locked_second
 
           if locked_source.fraud_blocked?
-            raise StandardError, "Source account is blocked for suspected fraud"
+            raise DomainFailure, DomainError.new(code: "account.fraud_blocked", message: "Source account is blocked for suspected fraud", http_status: :unprocessable_entity)
           end
 
           if locked_source.status != "active"
-            raise StandardError, "Source account is not active"
+            raise DomainFailure, DomainError.new(code: "account.not_active", message: "Source account is not active", http_status: :unprocessable_entity)
           end
 
           if locked_destination.fraud_blocked?
-            raise StandardError, "Destination account is blocked for suspected fraud"
+            raise DomainFailure, DomainError.new(code: "account.fraud_blocked", message: "Destination account is blocked for suspected fraud", http_status: :unprocessable_entity)
           end
 
           if locked_destination.status == "closed"
-            raise StandardError, "Destination account is closed"
+            raise DomainFailure, DomainError.new(code: "account.closed", message: "Destination account is closed", http_status: :unprocessable_entity)
           end
 
-          if locked_source.balance < @amount
-            raise StandardError, "Insufficient funds"
+          if locked_source.balance_cents < @amount_cents
+            raise DomainFailure, DomainError.new(code: "transfer.insufficient_funds", message: "Insufficient funds", http_status: :unprocessable_entity)
           end
+
+          limit_error = TransferLimitPolicy.new(
+            source_account: locked_source,
+            destination_account: locked_destination,
+            amount_cents: @amount_cents
+          ).error
+          raise DomainFailure, limit_error if limit_error
 
           transaction_record = Transaction.create!(
             end_to_end_id: @end_to_end_id,
             source_account: locked_source,
             destination_account: locked_destination,
             pix_key_used: @pix_key_raw,
-            amount: @amount,
+            amount_cents: @amount_cents,
             description: @description,
             status: :processing
           )
 
           record_event(transaction_record, current_status: "created", reason: "Transfer created")
 
-          locked_source.update!(balance: locked_source.balance - @amount)
-          locked_destination.update!(balance: locked_destination.balance + @amount)
+          locked_source.update!(balance_cents: locked_source.balance_cents - @amount_cents)
+          locked_destination.update!(balance_cents: locked_destination.balance_cents + @amount_cents)
 
           transaction_record.update!(status: :completed)
           record_event(transaction_record, previous_status: "created", current_status: "completed", reason: "Balance transfer completed")
         end
-      rescue StandardError => e
+      rescue DomainFailure => e
         failed_tx = record_failed_transaction(e.message)
         enqueue_notification(failed_tx, "failed")
-        return Result.new(success?: false, transaction: failed_tx, error: e.message)
+        return Result.new(success?: false, transaction: failed_tx, error: e.error)
+      rescue StandardError => e
+        failed_tx = record_failed_transaction("Transfer could not be completed")
+        enqueue_notification(failed_tx, "failed")
+        return Result.new(success?: false, transaction: failed_tx, error: DomainError.new(code: "transfer.failed", message: "Transfer could not be completed", http_status: :unprocessable_entity))
       end
 
       enqueue_notification(transaction_record, "completed")
@@ -86,29 +97,30 @@ module Pix
     private
 
     def validate_pre_transfer
-      return "amount must be greater than zero" if @amount <= 0
+      return DomainError.new(code: "amount.invalid", message: "Amount must be a positive integer number of cents", http_status: :unprocessable_entity) unless @amount_cents.is_a?(Integer) && @amount_cents.positive?
+      return DomainError.new(code: "amount.limit_exceeded", message: "Amount exceeds the system transfer limit", http_status: :unprocessable_entity) if @amount_cents > Money::MAX_TRANSFER_CENTS
 
       @source_account = Account.find_by(id: @source_account_id)
-      return "source account not found" unless @source_account
-      return "Source account is blocked for suspected fraud" if @source_account.fraud_blocked?
-      return "source account is blocked" if @source_account.blocked?
-      return "source account is closed" if @source_account.closed?
+      return DomainError.new(code: "account.not_found", message: "Source account not found", http_status: :not_found) unless @source_account
+      return DomainError.new(code: "account.fraud_blocked", message: "Source account is blocked for suspected fraud", http_status: :unprocessable_entity) if @source_account.fraud_blocked?
+      return DomainError.new(code: "account.blocked", message: "Source account is blocked", http_status: :unprocessable_entity) if @source_account.blocked?
+      return DomainError.new(code: "account.closed", message: "Source account is closed", http_status: :unprocessable_entity) if @source_account.closed?
 
       @pix_key = PixKey.find_by(key_value: normalize_key_value(@pix_key_raw))
-      return "PIX key not found" unless @pix_key
-      return "PIX key is not active" unless @pix_key.active?
+      return DomainError.new(code: "pix_key.not_found", message: "PIX key not found", http_status: :not_found) unless @pix_key
+      return DomainError.new(code: "pix_key.not_active", message: "PIX key is not active", http_status: :unprocessable_entity) unless @pix_key.active?
 
       @destination_account = @pix_key.account
-      return "destination account not found" unless @destination_account
-      return "Destination account is blocked for suspected fraud" if @destination_account.fraud_blocked?
-      return "destination account is closed" if @destination_account.closed?
+      return DomainError.new(code: "account.not_found", message: "Destination account not found", http_status: :not_found) unless @destination_account
+      return DomainError.new(code: "account.fraud_blocked", message: "Destination account is blocked for suspected fraud", http_status: :unprocessable_entity) if @destination_account.fraud_blocked?
+      return DomainError.new(code: "account.closed", message: "Destination account is closed", http_status: :unprocessable_entity) if @destination_account.closed?
 
       if @source_account.id == @destination_account.id
-        return "self-transfers are not allowed"
+        return DomainError.new(code: "transfer.self_transfer", message: "Self-transfers are not allowed", http_status: :unprocessable_entity)
       end
 
-      if @source_account.balance < @amount
-        return "insufficient funds"
+      if @source_account.balance_cents < @amount_cents
+        return DomainError.new(code: "transfer.insufficient_funds", message: "Insufficient funds", http_status: :unprocessable_entity)
       end
 
       nil
@@ -122,7 +134,7 @@ module Pix
         source_account: @source_account,
         destination_account: @destination_account,
         pix_key_used: @pix_key_raw,
-        amount: @amount > 0 ? @amount : 0.01,
+        amount_cents: @amount_cents.positive? ? @amount_cents : 1,
         description: @description,
         status: :failed,
         failure_reason: reason
@@ -136,7 +148,7 @@ module Pix
         transaction_record: transaction_record,
         previous_status: previous_status,
         current_status: current_status,
-        amount: transaction_record.amount,
+        amount_cents: transaction_record.amount_cents,
         source_account: transaction_record.source_account,
         destination_account: transaction_record.destination_account,
         reason: reason,

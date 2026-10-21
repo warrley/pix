@@ -13,7 +13,7 @@ module Api
           render_error(@pix_key.errors.to_hash)
         end
       rescue ActiveRecord::RecordNotUnique
-        render_error("Key already registered", status: :unprocessable_entity)
+        render_error("Key already registered", status: :conflict, code: "pix_key.already_registered")
       end
 
       def index
@@ -40,11 +40,7 @@ module Api
       end
 
       def pix_key_params
-        if params[:pix_key].present?
-          params.require(:pix_key).permit(:key_type, :key_value)
-        else
-          params.permit(:key_type, :key_value)
-        end
+        params.require(:pix_key).permit(:key_type, :key_value)
       end
     end
   end

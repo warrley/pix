@@ -13,24 +13,27 @@ module Pix
 
     def call
       transaction = Transaction.find_by(id: @transaction_id)
-      return Result.new(success?: false, transaction: nil, error: "Transaction not found") unless transaction
+      unless transaction
+        error = DomainError.new(code: "transaction.not_found", message: "Transaction not found", http_status: :not_found)
+        return Result.new(success?: false, transaction: nil, error: error)
+      end
 
       begin
         ActiveRecord::Base.transaction do
           transaction.lock!
 
           if transaction.completed?
-            raise StandardError, "Cannot cancel a completed transaction"
+            raise DomainFailure, DomainError.new(code: "transaction.already_completed", message: "Cannot cancel a completed transaction", http_status: :conflict)
           elsif transaction.cancelled?
-            raise StandardError, "Transaction is already cancelled"
+            raise DomainFailure, DomainError.new(code: "transaction.already_cancelled", message: "Transaction is already cancelled", http_status: :conflict)
           elsif !transaction.processing?
-            raise StandardError, "Only pending/processing transactions can be cancelled"
+            raise DomainFailure, DomainError.new(code: "transaction.invalid_state", message: "Only pending/processing transactions can be cancelled", http_status: :conflict)
           end
 
           source_account = transaction.source_account
 
           source_account.lock!
-          source_account.update!(balance: source_account.balance + transaction.amount)
+          source_account.update!(balance_cents: source_account.balance_cents + transaction.amount_cents)
 
           transaction.update!(
             status: :cancelled,
@@ -41,15 +44,18 @@ module Pix
             transaction_record: transaction,
             previous_status: "processing",
             current_status: "cancelled",
-            amount: transaction.amount,
+            amount_cents: transaction.amount_cents,
             source_account: transaction.source_account,
             destination_account: transaction.destination_account,
             reason: @reason,
             created_at: Time.current
           )
         end
-      rescue StandardError => e
-        return Result.new(success?: false, transaction: nil, error: e.message)
+      rescue DomainFailure => e
+        return Result.new(success?: false, transaction: nil, error: e.error)
+      rescue StandardError
+        error = DomainError.new(code: "transaction.cancel_failed", message: "Transaction could not be cancelled", http_status: :unprocessable_entity)
+        return Result.new(success?: false, transaction: nil, error: error)
       end
 
       Notifications::Enqueuer.enqueue(transaction.id, "cancelled")
