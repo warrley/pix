@@ -93,15 +93,15 @@ module Notifications
       def private_address?(value)
         address = IPAddr.new(value)
         address = address.native if address.respond_to?(:ipv4_mapped?) && address.ipv4_mapped?
-        address.private? || address.loopback? || address.link_local? || address.multicast? ||
+        address.private? || address.loopback? || address.link_local? ||
           address.to_s == "0.0.0.0" || reserved_address?(address)
       end
 
       def reserved_address?(address)
         blocked_ranges = if address.ipv4?
-          %w[0.0.0.0/8 100.64.0.0/10 192.0.0.0/24 192.0.2.0/24 198.18.0.0/15 198.51.100.0/24 203.0.113.0/24 240.0.0.0/4]
+          %w[0.0.0.0/8 100.64.0.0/10 192.0.0.0/24 192.0.2.0/24 198.18.0.0/15 198.51.100.0/24 203.0.113.0/24 224.0.0.0/4 240.0.0.0/4]
         else
-          %w[::/128 ::1/128 64:ff9b::/96 2001:db8::/32]
+          %w[::/128 ::1/128 64:ff9b::/96 2001:db8::/32 ff00::/8]
         end
         blocked_ranges.any? { |range| IPAddr.new(range).include?(address) }
       end
