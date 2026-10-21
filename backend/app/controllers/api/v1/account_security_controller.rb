@@ -2,6 +2,8 @@ module Api
   module V1
     class AccountSecurityController < ApplicationController
       before_action :set_account
+      before_action :authorize_operator!
+      before_action -> { require_api_scope!("accounts:admin") }
 
       def block_fraud
         reason = params[:reason].presence || params.dig(:account, :reason).presence
@@ -11,6 +13,7 @@ module Api
         end
 
         if @account.update(fraud_blocked: true, fraud_blocked_at: Time.current, fraud_block_reason: reason)
+          Security::AuditLogger.record(event: "account_fraud_blocked", actor: current_user, resource: @account, request: request)
           render_success(@account)
         else
           render_error(@account.errors.to_hash)
@@ -19,6 +22,7 @@ module Api
 
       def unblock_fraud
         if @account.update(fraud_blocked: false, fraud_blocked_at: nil, fraud_block_reason: nil)
+          Security::AuditLogger.record(event: "account_fraud_unblocked", actor: current_user, resource: @account, request: request)
           render_success(@account)
         else
           render_error(@account.errors.to_hash)

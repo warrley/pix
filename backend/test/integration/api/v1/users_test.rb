@@ -1,18 +1,27 @@
 require "test_helper"
 
 class Api::V1::UsersTest < ActionDispatch::IntegrationTest
+  setup do
+    @operator = users(:one)
+    @operator.update!(role: "operator")
+    authenticate_requests_as(@operator)
+  end
+
   test "POST /api/v1/users creates a user with valid data" do
     post api_v1_users_path, params: {
       user: {
         name: "John Doe",
         email: "john@example.com",
         doc_id: "52998224725",
-        phone: "+5511999999999"
+        phone: "+5511999999999",
+        password: "correct horse battery staple"
       }
     }, as: :json
 
     assert_response :created
     assert response.parsed_body.dig("data", "id").present?
+    refute response.parsed_body.dig("data").key?("password_digest")
+    refute response.parsed_body.dig("data").key?("doc_id")
     assert_nil response.parsed_body["error"]
   end
 
@@ -30,7 +39,8 @@ class Api::V1::UsersTest < ActionDispatch::IntegrationTest
         name: "",
         email: "invalid-email",
         doc_id: "123",
-        phone: "999"
+        phone: "999",
+        password: "correct horse battery staple"
       }
     }, as: :json
 
@@ -38,6 +48,15 @@ class Api::V1::UsersTest < ActionDispatch::IntegrationTest
     assert_nil response.parsed_body["data"]
     assert response.parsed_body["error"].is_a?(Hash)
     assert response.parsed_body["error"].key?("name")
+  end
+
+  test "POST /api/v1/users requires an initial password" do
+    post api_v1_users_path, params: {
+      user: { name: "No Password", email: "no-password@example.com", doc_id: "52998224725" }
+    }, as: :json
+
+    assert_response :unprocessable_entity
+    assert response.parsed_body.dig("error", "password").present?
   end
 
   test "GET /api/v1/users/:id returns the user when it exists" do
@@ -94,6 +113,7 @@ class Api::V1::UsersTest < ActionDispatch::IntegrationTest
 
   test "DELETE /api/v1/users/:id deletes an existing user" do
     user = users(:two)
+    authenticate_requests_as(user)
 
     delete api_v1_user_path(user), as: :json
 
