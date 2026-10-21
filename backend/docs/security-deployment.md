@@ -7,6 +7,15 @@
 3. Emita o token em `POST /api/v1/auth/token`. Tokens duram 15 minutos, são armazenados somente como SHA-256 e podem ser revogados em `DELETE /api/v1/auth/token`. Alterar a senha revoga os tokens ativos do usuário.
 4. Não habilite cadastro público. A criação de usuários pela API exige token e papel de operador. Distribua credenciais por canal seguro e permita que o titular troque a senha autenticado.
 
+## Fluxo de deploy deste repositório
+
+- O deploy automatizado atual é `.github/workflows/cd.yml`: após o CI na branch `main` (ou execução manual), conecta à VPS por SSH e executa `docker compose up -d --build` em `~/pix`. Esse fluxo usa o `.env` local da VPS; variáveis presentes apenas nos Secrets do GitHub não chegam ao container automaticamente.
+- Configure o `.env` na VPS com `RAILS_ENV=production`, `RAILS_MASTER_KEY`, `DATABASE_URL` (incluindo `sslmode=verify-full`), `PGSSLROOTCERT` quando necessário, `CORS_ALLOWED_ORIGINS` e, quando houver integração, `NOTIFICATIONS_WEBHOOK_URL`, `NOTIFICATIONS_WEBHOOK_ALLOWED_HOSTS` e `NOTIFICATIONS_WEBHOOK_SECRET`. O `docker-compose.yml` encaminha essas variáveis para o serviço Rails. Não grave os valores reais no Git nem os inclua em comandos ou logs.
+- O compose atual executa `rails db:prepare` ao iniciar o backend. Faça e valide o backup antes do primeiro deploy com as migrações de segurança e confira os logs de inicialização antes de liberar tráfego.
+- A configuração `config/deploy.yml` é uma alternativa Kamal, não é chamada pelo workflow acima. Ela agora exige `KAMAL_SERVER_IP` e `KAMAL_REGISTRY_SERVER`, em vez de aceitar os valores de exemplo que estavam no arquivo. Para Kamal, configure também as variáveis claras e segredos indicados nesse arquivo em seu ambiente/secret manager.
+- Em produção, `database.yml` usa `sslmode=verify-full`. O host do banco deve corresponder ao certificado; quando a CA não estiver no trust store da imagem, disponibilize o arquivo de CA ao container e configure `PGSSLROOTCERT` para o caminho dentro do container. Não desative a verificação para contornar erros de certificado. O serviço `db` do Compose raiz não habilita TLS no PostgreSQL; não o use como banco de produção sem configurar TLS no servidor e um certificado válido para o nome `db`. Prefira apontar `DATABASE_URL` para uma instância PostgreSQL gerenciada com TLS configurado.
+- Antes de fechar o acesso temporário de perímetro, execute o roteiro em `docs/security-manual-smoke-tests.md` e confirme que uma rota de conta sem token responde `401`.
+
 ## TLS e navegador
 
 - O Kamal termina TLS com certificado automático para `pix.warley.xyz`; Rails assume o proxy confiável, força HTTPS, envia HSTS e mantém `/up` disponível para health checks.
