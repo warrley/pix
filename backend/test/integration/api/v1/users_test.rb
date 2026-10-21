@@ -39,7 +39,8 @@ class Api::V1::UsersTest < ActionDispatch::IntegrationTest
         name: "",
         email: "invalid-email",
         doc_id: "123",
-        phone: "999"
+        phone: "999",
+        password: "correct horse battery staple"
       }
     }, as: :json
 
