@@ -16,7 +16,7 @@ class User < ApplicationRecord
   validates :phone, format: { with: /\A\+55\d{10,11}\z/, message: "must be in E.164 format (+55DDXXXXXXXXX)" },
                     allow_blank: true
   validates :password, length: { minimum: 12, maximum: 128 }, allow_nil: true
-  validates :password, format: { with: /\S/, message: "must contain a non-whitespace character" }, allow_nil: true
+  validates :password, format: { with: /\A.*\S.*\z/m, message: "must contain a non-whitespace character" }, allow_nil: true
 
   def password=(value)
     @password = value
