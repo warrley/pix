@@ -17,7 +17,7 @@ class Account < ApplicationRecord
   validates :user, presence: true
   validates :account_number, presence: true, uniqueness: true
   validates :agency_number, presence: true, length: { maximum: 10 }
-  validates :balance_cents, numericality: { greater_than_or_equal_to: 0 }
+  validates :balance, numericality: { greater_than_or_equal_to: 0 }
 
   def balance
     Pix::Money.decimal_from_cents(balance_cents)

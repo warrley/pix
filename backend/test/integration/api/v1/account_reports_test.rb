@@ -79,9 +79,7 @@ class Api::V1::AccountReportsTest < ActionDispatch::IntegrationTest
   end
 
   test "GET statement rejects conflicting period filters" do
-    get "/api/v1/accounts/#{@account1.id}/reports/statement", params: {
-      month: 9, year: 2026, start_date: "2026-09-01", end_date: "2026-09-30"
-    }, as: :json
+    get "/api/v1/accounts/#{@account1.id}/reports/statement?month=9&year=2026&start_date=2026-09-01&end_date=2026-09-30", as: :json
 
     assert_response :bad_request
     assert_equal "period.conflicting_filters", response.parsed_body["code"]

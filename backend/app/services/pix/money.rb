@@ -32,6 +32,8 @@ module Pix
     end
 
     def self.decimal_from_cents(cents)
+      return if cents.nil?
+
       BigDecimal(cents.to_i.to_s) / 100
     end
 

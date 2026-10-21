@@ -6,7 +6,7 @@ class TransactionEvent < ApplicationRecord
   validates :transaction_record, :current_status, :amount, :source_account, :destination_account, presence: true
   validates :previous_status, length: { maximum: 20 }, allow_nil: true
   validates :current_status, length: { maximum: 20 }
-  validates :amount_cents, numericality: true
+  validates :amount, numericality: true
 
   def amount
     Pix::Money.decimal_from_cents(amount_cents)

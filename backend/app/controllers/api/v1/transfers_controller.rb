@@ -1,6 +1,8 @@
 module Api
   module V1
     class TransfersController < ApplicationController
+      wrap_parameters false
+
       def create
         e2e_id = request.headers["X-Idempotency-Key"].presence || transfer_params[:end_to_end_id].presence
 
