@@ -75,6 +75,18 @@ class Notifications::WebhookNotifierTest < ActiveSupport::TestCase
     end
   end
 
+  test "rejects destinations resolving to multicast addresses" do
+    [ "224.0.0.1", "ff02::1" ].each do |address|
+      with_webhook_configuration do
+        with_method_stub(Resolv, :getaddresses, ->(*) { [ address ] }) do
+          with_method_stub(Net::HTTP, :new, ->(*) { flunk "network request should not be made" }) do
+            refute Notifications::WebhookNotifier.notify(@user, @payload)
+          end
+        end
+      end
+    end
+  end
+
   test "returns failure when endpoint responds with an error" do
     @http.define_singleton_method(:request) { |*| FakeResponse.new("503") }
 
