@@ -9,7 +9,13 @@ class TransactionNotificationJob < ApplicationJob
   ].freeze
 
   discard_on ActiveRecord::RecordNotFound
-  retry_on Notifications::DeliveryError, attempts: 3, wait: :exponentially_longer
+  retry_on Notifications::DeliveryError, attempts: 3, wait: :exponentially_longer do |job, error|
+    Rails.logger.error(
+      "notification_delivery_dead_letter transaction_id=#{job.arguments.first} " \
+      "event=#{job.arguments.second} error=#{error.class.name}"
+    )
+    raise error
+  end
 
   class << self
     def notifiers
@@ -75,6 +81,7 @@ class TransactionNotificationJob < ApplicationJob
   def build_payload(transaction, event_type, counterparty)
     timestamp = event_type == "cancelled" ? transaction.cancelled_at : transaction.created_at
     payload = {
+      event_id: "transaction-#{transaction.id}-#{event_type}",
       event_type: event_type,
       amount: format("%.2f", transaction.amount),
       end_to_end_id: transaction.end_to_end_id,

@@ -5,8 +5,8 @@ module Notifications
         Rails.logger.info(
           "Transaction notification dispatched " \
           "event=#{payload[:event_type]} " \
-          "end_to_end_id=#{payload[:end_to_end_id]} " \
-          "email=#{user.email} phone=#{user.phone}"
+          "event_id=#{payload[:event_id]} " \
+          "recipient_id=#{user.id}"
         )
         true
       end

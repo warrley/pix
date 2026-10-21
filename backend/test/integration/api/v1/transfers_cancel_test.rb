@@ -20,6 +20,7 @@ class Api::V1::TransfersCancelTest < ActionDispatch::IntegrationTest
       pix_key_used: "receiver@example.com",
       status: :processing
     )
+    authenticate_requests_as(@user1)
   end
 
   test "should cancel a pending transaction and return 200 OK" do

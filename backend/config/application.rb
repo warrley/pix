@@ -1,6 +1,7 @@
 require_relative "boot"
 
 require "rails/all"
+require_relative "../lib/api_cors"
 
 # Require the gems listed in Gemfile, including any gems
 # you've limited to :test, :development, or :production.
@@ -30,6 +31,8 @@ module Backend
     config.api_only = true
     config.time_zone = "America/Sao_Paulo"
     config.active_record.default_timezone = :utc
+    cors_origins = ENV.fetch("CORS_ALLOWED_ORIGINS", "").split(",").map(&:strip).reject(&:blank?)
+    config.middleware.insert_before 0, ApiCors, allowed_origins: cors_origins
 
     # Allowed hosts for Host Authorization
     if Rails.env.test? || Rails.env.development?

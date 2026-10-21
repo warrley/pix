@@ -41,10 +41,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_000000) do
     t.string "token_digest", null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
-    t.index ["token_digest"], name: "index_api_access_tokens_on_token_digest", unique: true
-    t.index ["user_id", "expires_at"], name: "index_api_access_tokens_on_user_id_and_expires_at"
-    t.index ["user_id"], name: "index_api_access_tokens_on_user_id"
+    t.index [ "token_digest" ], name: "index_api_access_tokens_on_token_digest", unique: true
+    t.index [ "user_id", "expires_at" ], name: "index_api_access_tokens_on_user_id_and_expires_at"
+    t.index [ "user_id" ], name: "index_api_access_tokens_on_user_id"
   end
+
   create_table "pix_keys", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.datetime "created_at", null: false
@@ -99,13 +100,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_000000) do
     t.string "doc_id", limit: 14, null: false
     t.string "email", null: false
     t.string "name", null: false
+    t.string "password_digest"
     t.string "phone", limit: 15
+    t.string "role", default: "customer", null: false
     t.datetime "updated_at", null: false
     t.index "lower((email)::text)", name: "index_users_on_lower_email", unique: true
     t.index ["doc_id"], name: "index_users_on_doc_id", unique: true
+    t.check_constraint "role::text = ANY (ARRAY['customer'::character varying, 'operator'::character varying]::text[])", name: "users_role_valid"
   end
 
   add_foreign_key "accounts", "users"
+  add_foreign_key "api_access_tokens", "users", on_delete: :cascade
   add_foreign_key "pix_keys", "accounts"
   add_foreign_key "transaction_events", "accounts", column: "destination_account_id", on_delete: :restrict
   add_foreign_key "transaction_events", "accounts", column: "source_account_id", on_delete: :restrict

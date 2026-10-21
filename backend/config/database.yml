@@ -86,6 +86,7 @@ production:
   primary: &primary_production
     <<: *default
     database: <%= ENV.fetch("POSTGRES_DB", "backend_production") %>
+    sslmode: verify-full
   cache:
     <<: *primary_production
     database: backend_production_cache

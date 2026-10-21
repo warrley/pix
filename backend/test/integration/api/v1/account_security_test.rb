@@ -3,6 +3,9 @@ require "test_helper"
 class Api::V1::AccountSecurityTest < ActionDispatch::IntegrationTest
   setup do
     @account = accounts(:one)
+    @operator = users(:one)
+    @operator.update!(role: "operator")
+    authenticate_requests_as(@operator)
   end
 
   test "PATCH /api/v1/accounts/:id/block_fraud updates account status and reason" do

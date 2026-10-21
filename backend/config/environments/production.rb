@@ -12,6 +12,14 @@ Rails.application.configure do
   # Full error reports are disabled.
   config.consider_all_requests_local = false
 
+  # The edge proxy must terminate HTTPS and forward X-Forwarded-Proto correctly.
+  config.assume_ssl = true
+  config.force_ssl = true
+  config.ssl_options = {
+    hsts: { expires: 1.year, subdomains: true },
+    redirect: { exclude: ->(request) { request.path == "/up" } }
+  }
+
   # Cache assets for far-future expiry since they are all digest stamped.
   config.public_file_server.headers = { "cache-control" => "public, max-age=#{1.year.to_i}" }
 

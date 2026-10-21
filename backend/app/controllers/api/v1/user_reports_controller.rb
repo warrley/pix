@@ -2,8 +2,11 @@ module Api
   module V1
     class UserReportsController < ApplicationController
       include ActionController::MimeResponds
+      before_action -> { require_api_scope!("reports:read") }
 
       def transactions
+        return render_not_found unless params[:user_id].to_i == current_user.id
+
         report = Reports::UserTransactionsService.call(user_id: params[:user_id])
 
         respond_to do |format|
