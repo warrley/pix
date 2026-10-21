@@ -1,6 +1,5 @@
 class Account < ApplicationRecord
   attribute :agency_number, :string, default: "0001"
-  attribute :balance, :decimal, default: 0.0
 
   enum :status, {
     active:  "active",
@@ -18,7 +17,19 @@ class Account < ApplicationRecord
   validates :user, presence: true
   validates :account_number, presence: true, uniqueness: true
   validates :agency_number, presence: true, length: { maximum: 10 }
-  validates :balance, numericality: { greater_than_or_equal_to: 0 }
+  validates :balance_cents, numericality: { greater_than_or_equal_to: 0 }
+
+  def balance
+    Pix::Money.decimal_from_cents(balance_cents)
+  end
+
+  def balance=(value)
+    self.balance_cents = Pix::Money.cents_from_decimal(value)
+  end
+
+  def as_json(options = {})
+    super(options).except("balance_cents").merge("balance" => Pix::Money.format_cents(balance_cents))
+  end
 
   private
 

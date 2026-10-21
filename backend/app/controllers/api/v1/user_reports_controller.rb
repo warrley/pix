@@ -14,7 +14,9 @@ module Api
               disposition: "attachment",
               filename: "user_#{report[:user_id]}_transactions_report.csv"
           end
-          format.any { head :not_acceptable }
+          format.any do
+            render_error("The requested response format is not supported", status: :not_acceptable, code: "request.not_acceptable")
+          end
         end
       end
     end

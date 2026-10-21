@@ -36,8 +36,8 @@ class Api::V1::UsersTest < ActionDispatch::IntegrationTest
 
     assert_response :unprocessable_entity
     assert_nil response.parsed_body["data"]
-    assert response.parsed_body["error"].is_a?(Hash)
-    assert response.parsed_body["error"].key?("name")
+    assert response.parsed_body["errors"].is_a?(Hash)
+    assert response.parsed_body["errors"].key?("name")
   end
 
   test "GET /api/v1/users/:id returns the user when it exists" do
@@ -89,7 +89,7 @@ class Api::V1::UsersTest < ActionDispatch::IntegrationTest
 
     assert_response :unprocessable_entity
     assert_nil response.parsed_body["data"]
-    assert response.parsed_body["error"].is_a?(Hash)
+    assert response.parsed_body["errors"].is_a?(Hash)
   end
 
   test "DELETE /api/v1/users/:id deletes an existing user" do
@@ -109,6 +109,6 @@ class Api::V1::UsersTest < ActionDispatch::IntegrationTest
 
     assert_response :unprocessable_entity
     assert_nil response.parsed_body["data"]
-    assert response.parsed_body["error"].key?("base")
+    assert response.parsed_body["errors"].key?("base")
   end
 end

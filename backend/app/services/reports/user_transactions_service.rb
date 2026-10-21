@@ -66,7 +66,7 @@ module Reports
       Transaction
         .where(status: :completed)
         .where("source_account_id IN (?) OR destination_account_id IN (?)", account_ids, account_ids)
-        .select(:id, :source_account_id, :destination_account_id, :amount)
+        .select(:id, :source_account_id, :destination_account_id, :amount_cents)
         .to_a
     end
 
@@ -85,7 +85,7 @@ module Reports
       metrics = empty_metrics
 
       transactions.each do |transaction|
-        amount = BigDecimal(transaction.amount.to_s)
+        amount = transaction.amount_cents
         metrics[:total_transactions_count] += 1
         metrics[:total_transaction_amount] += amount
         metrics[:total_sent_amount] += amount if owner_account_ids.include?(transaction.source_account_id)
@@ -94,7 +94,7 @@ module Reports
 
       metrics[:net_balance_change] = metrics[:total_received_amount] - metrics[:total_sent_amount]
       metrics[:average_ticket_amount] = if metrics[:total_transactions_count].positive?
-        metrics[:total_transaction_amount] / metrics[:total_transactions_count]
+        BigDecimal(metrics[:total_transaction_amount].to_s) / metrics[:total_transactions_count]
       else
         BigDecimal("0")
       end
@@ -105,20 +105,21 @@ module Reports
     def empty_metrics
       {
         total_transactions_count: 0,
-        total_transaction_amount: BigDecimal("0"),
-        total_sent_amount: BigDecimal("0"),
-        total_received_amount: BigDecimal("0"),
-        net_balance_change: BigDecimal("0"),
+        total_transaction_amount: 0,
+        total_sent_amount: 0,
+        total_received_amount: 0,
+        net_balance_change: 0,
         average_ticket_amount: BigDecimal("0")
       }
     end
 
     def presentation_metrics(metrics)
+      average_cents = metrics[:average_ticket_amount].round(0, BigDecimal::ROUND_HALF_UP).to_i
       metrics.slice(:total_transactions_count).merge(
-        total_sent_amount: metrics[:total_sent_amount].to_f,
-        total_received_amount: metrics[:total_received_amount].to_f,
-        net_balance_change: metrics[:net_balance_change].to_f,
-        average_ticket_amount: metrics[:average_ticket_amount].to_f
+        total_sent_amount: Pix::Money.format_cents(metrics[:total_sent_amount]),
+        total_received_amount: Pix::Money.format_cents(metrics[:total_received_amount]),
+        net_balance_change: Pix::Money.format_cents(metrics[:net_balance_change]),
+        average_ticket_amount: Pix::Money.format_cents(average_cents)
       )
     end
 
@@ -157,7 +158,7 @@ module Reports
     end
 
     def money(value)
-      format("%.2f", BigDecimal(value.to_s))
+      value.to_s
     end
   end
 end

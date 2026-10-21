@@ -26,7 +26,7 @@ class Api::V1::TransfersTest < ActionDispatch::IntegrationTest
     assert_nil body["error"]
     assert_not_nil body["data"]
     assert_equal "completed", body.dig("data", "status")
-    assert_equal 50.0, body.dig("data", "amount")
+    assert_equal "50.00", body.dig("data", "amount")
     assert_equal "Payment for dinner", body.dig("data", "description")
     assert_equal @source_account.id, body.dig("data", "sender", "account_id")
     assert_equal @dest_account.id, body.dig("data", "receiver", "account_id")
@@ -51,7 +51,7 @@ class Api::V1::TransfersTest < ActionDispatch::IntegrationTest
     assert_response :unprocessable_entity
     body = response.parsed_body
     assert_nil body["data"]
-    assert_equal "insufficient funds", body["error"]
+    assert_equal "transfer.insufficient_funds", body["code"]
     assert_equal 500.00, @source_account.reload.balance
     assert_equal 100.00, @dest_account.reload.balance
   end
@@ -93,7 +93,7 @@ class Api::V1::TransfersTest < ActionDispatch::IntegrationTest
     result = Pix::TransferService.call(
       source_account_id: @source_account.id,
       pix_key: "receiver_api@example.com",
-      amount: 75.00,
+      amount_cents: 7_500,
       description: "Book purchase"
     )
 
@@ -104,14 +104,14 @@ class Api::V1::TransfersTest < ActionDispatch::IntegrationTest
     assert_nil body["error"]
     assert_equal result.transaction.id, body.dig("data", "id")
     assert_equal result.transaction.end_to_end_id, body.dig("data", "end_to_end_id")
-    assert_equal 75.0, body.dig("data", "amount")
+    assert_equal "75.00", body.dig("data", "amount")
   end
 
   test "GET /api/v1/transfers/:id returns receipt by end_to_end_id" do
     result = Pix::TransferService.call(
       source_account_id: @source_account.id,
       pix_key: "receiver_api@example.com",
-      amount: 30.00
+      amount_cents: 3_000
     )
 
     get api_v1_transfer_path(result.transaction.end_to_end_id), as: :json
@@ -130,5 +130,42 @@ class Api::V1::TransfersTest < ActionDispatch::IntegrationTest
     body = response.parsed_body
     assert_nil body["data"]
     assert_equal "Record not found", body["error"]
+    assert_equal "resource.not_found", body["code"]
+  end
+
+  test "POST /api/v1/transfers rejects numeric amounts instead of parsing binary floats" do
+    post api_v1_transfers_path, params: {
+      transfer: { source_account_id: @source_account.id, pix_key: "receiver_api@example.com", amount: 50.25 }
+    }, as: :json
+
+    assert_response :unprocessable_entity
+    assert_equal "amount.invalid", response.parsed_body["code"]
+  end
+
+  test "POST /api/v1/transfers rejects amounts above the system ceiling" do
+    post api_v1_transfers_path, params: {
+      transfer: { source_account_id: @source_account.id, pix_key: "receiver_api@example.com", amount: "10000000.00" }
+    }, as: :json
+
+    assert_response :unprocessable_entity
+    assert_equal "amount.limit_exceeded", response.parsed_body["code"]
+  end
+
+  test "POST /api/v1/transfers requires the canonical transfer wrapper" do
+    post api_v1_transfers_path, params: {
+      source_account_id: @source_account.id, pix_key: "receiver_api@example.com", amount: "1.00"
+    }, as: :json
+
+    assert_response :bad_request
+    assert_equal "request.parameter_missing", response.parsed_body["code"]
+  end
+
+  test "POST /api/v1/transfers rejects a non-JSON content type" do
+    post api_v1_transfers_path,
+      params: "transfer[source_account_id]=#{@source_account.id}",
+      headers: { "CONTENT_TYPE" => "application/x-www-form-urlencoded", "ACCEPT" => "application/json" }
+
+    assert_response :unsupported_media_type
+    assert_equal "request.unsupported_media_type", response.parsed_body["code"]
   end
 end

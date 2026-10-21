@@ -43,17 +43,17 @@ class Api::V1::TransfersCancelTest < ActionDispatch::IntegrationTest
     assert_response :not_found
 
     json_response = JSON.parse(response.body)
-    assert_equal "Transaction not found", json_response["error"]
+    assert_equal "transaction.not_found", json_response["code"]
   end
 
-  test "should return 422 if transaction cannot be cancelled" do
+  test "should return 409 if transaction cannot be cancelled" do
     @transaction.update!(status: :completed)
 
     post "/api/v1/transfers/#{@transaction.id}/cancel"
 
-    assert_response :unprocessable_entity
+    assert_response :conflict
 
     json_response = JSON.parse(response.body)
-    assert_equal "Cannot cancel a completed transaction", json_response["error"]
+    assert_equal "transaction.already_completed", json_response["code"]
   end
 end

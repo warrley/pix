@@ -4,7 +4,7 @@ module Api
       before_action :set_account
 
       def block_fraud
-        reason = params[:reason].presence || params.dig(:account, :reason).presence
+        reason = params[:reason].presence
 
         unless reason.present?
           return render_error("Reason is required", status: :unprocessable_entity)

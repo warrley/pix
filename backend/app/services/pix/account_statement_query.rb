@@ -12,8 +12,9 @@ module Pix
 
     def initialize(account_id:, page:, per_page:, start_date: nil, end_date: nil, status: nil)
       @account_id = account_id
-      @page = [ (page.presence || 1).to_i, 1 ].max
-      @per_page = [ [ (per_page.presence || 20).to_i, 1 ].max, 100 ].min # max de 100 por regra da issue
+      @page = parse_positive_integer(page, default: 1, name: "page")
+      @per_page = parse_positive_integer(per_page, default: 20, name: "per_page")
+      raise ArgumentError, "per_page must not exceed 100" if @per_page > 100
       @start_time = parse_date_boundary(start_date, beginning: true)
       @end_time = parse_date_boundary(end_date, beginning: false)
       @status = parse_status(status)
@@ -46,7 +47,7 @@ module Pix
 
         {
           id: tx.id,
-          amount: tx.amount,
+          amount: Money.format_cents(tx.amount_cents),
           operation_type: is_debit ? "debit" : "credit",
           status: tx.status,
           end_to_end_id: tx.end_to_end_id,
@@ -74,15 +75,23 @@ module Pix
     def parse_date_boundary(value, beginning:)
       return if value.blank?
 
-      utc_date = if value.match?(/\A\d{4}-\d{2}-\d{2}\z/)
-        Date.iso8601(value)
+      if value.match?(/\A\d{4}-\d{2}-\d{2}\z/)
+        date = Date.iso8601(value)
+        time = beginning ? date.in_time_zone.beginning_of_day : date.in_time_zone.end_of_day
+        return time.utc
       else
-        Time.iso8601(value).utc.to_date
+        raise ArgumentError unless value.match?(/(?:Z|[+-]\d{2}:\d{2})\z/)
+        return Time.iso8601(value).utc
       end
-
-      (beginning ? utc_date.beginning_of_day : utc_date.end_of_day).utc
     rescue ArgumentError, Date::Error
       raise ArgumentError, "invalid date: #{value}"
+    end
+
+    def parse_positive_integer(value, default:, name:)
+      return default if value.blank?
+      raise ArgumentError, "#{name} must be a positive integer" unless value.to_s.match?(/\A[1-9]\d*\z/)
+
+      value.to_i
     end
 
     def parse_status(value)

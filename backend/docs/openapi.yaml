@@ -6,6 +6,11 @@ info:
     Contrato da API versionada em `/api/v1` para usuários, contas, chaves PIX,
     transferências internas e relatórios.
 
+    Valores monetários são strings decimais com exatamente duas casas na resposta
+    (por exemplo, `"50.00"`). Requests aceitam string decimal com até duas casas.
+    O limite técnico por transferência é R$ 9.999.999,99; limites diários e
+    noturnos também podem restringir a operação.
+
     **Escopo atual:** a implementação mantém dados localmente e não representa,
     por si só, uma integração ou certificação junto ao DICT/SPI. A auditoria
     funcional e de aderência ao domínio está em `docs/auditoria-api-pix.md`.
@@ -68,6 +73,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '422':
           $ref: '#/components/responses/ValidationError'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
 
   /api/v1/users/{id}:
     parameters:
@@ -106,6 +113,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationError'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
     put:
       tags: [Users]
       summary: Atualiza um usuário
@@ -128,6 +137,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationError'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
     delete:
       tags: [Users]
       summary: Exclui um usuário
@@ -211,6 +222,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '422':
           $ref: '#/components/responses/ValidationError'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
 
   /api/v1/accounts/{id}:
     parameters:
@@ -236,20 +249,14 @@ paths:
       responses:
         '204':
           description: Conta encerrada; resposta sem corpo
-        '400':
-          description: Conta não pode ser encerrada enquanto possui saldo
+        '409':
+          description: Conta não pode ser encerrada enquanto possui saldo ou já está encerrada
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           $ref: '#/components/responses/NotFound'
-        '422':
-          description: Conta já encerrada ou erro de validação
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
 
   /api/v1/accounts/{id}/block_fraud:
     parameters:
@@ -277,6 +284,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationError'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
 
   /api/v1/accounts/{id}/unblock_fraud:
     parameters:
@@ -296,6 +305,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationError'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
 
   /api/v1/accounts/{account_id}/pix_keys:
     parameters:
@@ -339,6 +350,10 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationError'
+        '409':
+          $ref: '#/components/responses/BusinessError'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
 
   /api/v1/pix_keys/{id}:
     parameters:
@@ -366,14 +381,14 @@ paths:
       parameters:
         - name: page
           in: query
-          description: Página desejada; valores ausentes usam 1. Valores inválidos são normalizados pela implementação atual.
+          description: Página desejada; valores ausentes usam 1. Valores inválidos são rejeitados com 400.
           schema:
             type: integer
             minimum: 1
             default: 1
         - name: per_page
           in: query
-          description: Itens por página; a implementação limita o valor a 100.
+          description: Itens por página; valores ausentes usam 20. O máximo é 100; inválidos são rejeitados com 400.
           schema:
             type: integer
             minimum: 1
@@ -381,14 +396,14 @@ paths:
             default: 20
         - name: start_date
           in: query
-          description: Data/hora inicial inclusiva em `YYYY-MM-DD` ou ISO 8601.
+          description: Data local inclusiva `YYYY-MM-DD` em America/Sao_Paulo ou timestamp ISO 8601 com offset.
           schema:
             type: string
             format: date-time
             example: '2026-09-01'
         - name: end_date
           in: query
-          description: Data/hora final inclusiva em `YYYY-MM-DD` ou ISO 8601.
+          description: Data local inclusiva `YYYY-MM-DD` em America/Sao_Paulo ou timestamp ISO 8601 com offset.
           schema:
             type: string
             format: date-time
@@ -425,7 +440,7 @@ paths:
     get:
       tags: [Reports]
       summary: Obtém o extrato de uma conta
-      description: 'Retorna o extrato em JSON por padrão ou CSV com `format=csv`/`Accept: text/csv`. Use `month/year` ou `start_date/end_date`.'
+      description: 'Retorna JSON por padrão ou CSV com `format=csv`/`Accept: text/csv`. Use `month` e `year` juntos ou `start_date`/`end_date`; combinações são rejeitadas. Datas usam America/Sao_Paulo.'
       operationId: getAccountStatement
       parameters:
         - name: month
@@ -475,8 +490,7 @@ paths:
       tags: [Transfers]
       summary: Inicia uma transferência por chave PIX
       description: |
-        A aplicação atual aceita o payload dentro de `transfer` e também no topo.
-        O contrato recomendado usa `transfer`. A operação é síncrona no estado
+        O payload deve estar dentro de `transfer`. A operação é síncrona no estado
         atual e normalmente retorna `completed`.
       operationId: createTransfer
       parameters:
@@ -516,6 +530,12 @@ paths:
                 $ref: '#/components/schemas/TransferResponse'
         '422':
           $ref: '#/components/responses/BusinessError'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/BusinessError'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
 
   /api/v1/transfers/{id}:
     parameters:
@@ -571,7 +591,7 @@ paths:
                 $ref: '#/components/schemas/TransferResponse'
         '404':
           $ref: '#/components/responses/NotFound'
-        '422':
+        '409':
           $ref: '#/components/responses/BusinessError'
 
 components:
@@ -634,6 +654,13 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
           example:
+            type: about:blank
+            title: Not Found
+            status: 404
+            detail: Record not found
+            code: resource.not_found
+            request_id: 6b9c7f06-8c42-49e4-b6c8-1878ee24e755
+            errors: null
             data: null
             error: Record not found
     ValidationError:
@@ -650,17 +677,19 @@ components:
             $ref: '#/components/schemas/ErrorResponse'
     NotAcceptable:
       description: Formato solicitado não suportado
+    UnsupportedMediaType:
+      description: Content-Type diferente de application/json
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
 
   schemas:
     MoneyValue:
-      description: Valor monetário; a API atual alterna entre número e string decimal.
-      oneOf:
-        - type: string
-          pattern: '^\d+(\.\d+)?$'
-          example: '50.00'
-        - type: number
-          format: double
-          example: 50.0
+      description: Valor monetário em string decimal com escala fixa de duas casas.
+      type: string
+      pattern: '^-?\d+\.\d{2}$'
+      example: '50.00'
 
     User:
       type: object
@@ -793,12 +822,10 @@ components:
         source_account_id: {type: integer, minimum: 1}
         pix_key: {type: string, minLength: 1, maxLength: 77}
         amount:
-          oneOf:
-            - type: string
-              pattern: '^\d+(\.\d{1,2})?$'
-            - type: number
-              exclusiveMinimum: 0
-          description: Deve ser positivo; a implementação utiliza decimal internamente.
+          type: string
+          pattern: '^\d+(\.\d{1,2})?$'
+          maxLength: 10
+          description: Valor positivo em reais; máximo técnico de 9999999.99.
         description: {type: [string, 'null'], maxLength: 140}
         end_to_end_id:
           type: string
@@ -806,13 +833,11 @@ components:
           maxLength: 32
 
     TransferCreateBody:
-      oneOf:
-        - type: object
-          required: [transfer]
-          properties:
-            transfer:
-              $ref: '#/components/schemas/TransferRequest'
-        - $ref: '#/components/schemas/TransferRequest'
+      type: object
+      required: [transfer]
+      properties:
+        transfer:
+          $ref: '#/components/schemas/TransferRequest'
 
     CancelTransferBody:
       type: object
@@ -952,26 +977,24 @@ components:
           type: array
           items: {$ref: '#/components/schemas/UserReportAccount'}
 
-    ErrorValue:
-      oneOf:
-        - type: string
-        - type: object
-          additionalProperties:
-            type: array
-            items: {type: string}
-
     ErrorResponse:
       type: object
-      required: [data, error]
+      required: [type, title, status, detail, code, request_id, errors, data, error]
       properties:
+        type: {type: string, example: about:blank}
+        title: {type: string}
+        status: {type: integer}
+        detail: {type: string}
+        code: {type: string, example: amount.invalid}
+        request_id: {type: string}
+        errors: {type: [object, 'null'], additionalProperties: true}
         data: {type: 'null'}
-        error: {$ref: '#/components/schemas/ErrorValue'}
+        error: {type: string, description: Campo de compatibilidade; usar code para lógica}
 
     DirectErrorResponse:
       type: object
-      required: [error]
-      properties:
-        error: {type: string}
+      allOf:
+        - $ref: '#/components/schemas/ErrorResponse'
 
     UserResponse:
       type: object

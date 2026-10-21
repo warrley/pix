@@ -59,16 +59,16 @@ class Api::V1::AccountsTest < ActionDispatch::IntegrationTest
 
     delete api_v1_account_path(@account), as: :json
 
-    assert_response :bad_request
+    assert_response :conflict
     assert_equal "Cannot close account with existing balance", response.parsed_body["error"]
   end
 
-  test "DELETE /api/v1/accounts/:id returns 422 when account is already closed" do
+  test "DELETE /api/v1/accounts/:id returns 409 when account is already closed" do
     @account.update!(status: "closed")
 
     delete api_v1_account_path(@account), as: :json
 
-    assert_response :unprocessable_entity
-    assert_equal "Account is already closed", response.parsed_body["error"]
+    assert_response :conflict
+    assert_equal "account.already_closed", response.parsed_body["code"]
   end
 end

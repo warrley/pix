@@ -108,4 +108,11 @@ class Api::V1::AccountTransfersTest < ActionDispatch::IntegrationTest
     assert_response :bad_request
     assert_equal "invalid status: failed", JSON.parse(response.body)["error"]
   end
+
+  test "rejects invalid pagination values instead of normalizing them" do
+    get "/api/v1/accounts/#{@account.id}/transfers", params: { page: "abc", per_page: 0 }
+
+    assert_response :bad_request
+    assert_equal "request.invalid_filter", response.parsed_body["code"]
+  end
 end
