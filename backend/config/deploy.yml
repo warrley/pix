@@ -1,3 +1,5 @@
+# Optional Kamal configuration. The current production workflow in
+# .github/workflows/cd.yml deploys with Docker Compose over SSH.
 # Name of your application. Used to uniquely configure containers.
 service: backend
 
@@ -7,7 +9,7 @@ image: backend
 # Deploy to these servers.
 servers:
   web:
-    - 192.168.0.1
+    - <%= ENV.fetch("KAMAL_SERVER_IP") %>
   # job:
   #   hosts:
   #     - 192.168.0.1
@@ -27,7 +29,7 @@ proxy:
 # Where you keep your container images.
 registry:
   # Alternatives: hub.docker.com / registry.digitalocean.com / ghcr.io / ...
-  server: localhost:5555
+  server: <%= ENV.fetch("KAMAL_REGISTRY_SERVER") %>
 
   # Needed for authenticated registries.
   # username: your-user
@@ -41,20 +43,27 @@ env:
   secret:
     - RAILS_MASTER_KEY
     - NOTIFICATIONS_WEBHOOK_SECRET
+    - POSTGRES_PASSWORD
   clear:
     # Run the Solid Queue Supervisor inside the web server's Puma process to do jobs.
     # When you start using multiple servers, you should split out job processing to a dedicated machine.
     SOLID_QUEUE_IN_PUMA: true
+
+    # Set these in the deployment environment. Keep origins exact and
+    # webhook hosts limited to the receiver's DNS names.
+    CORS_ALLOWED_ORIGINS: <%= ENV.fetch("CORS_ALLOWED_ORIGINS", "") %>
+    NOTIFICATIONS_WEBHOOK_URL: <%= ENV.fetch("NOTIFICATIONS_WEBHOOK_URL", "") %>
+    NOTIFICATIONS_WEBHOOK_ALLOWED_HOSTS: <%= ENV.fetch("NOTIFICATIONS_WEBHOOK_ALLOWED_HOSTS", "") %>
+    POSTGRES_USER: <%= ENV.fetch("POSTGRES_USER", "") %>
+    POSTGRES_DB: <%= ENV.fetch("POSTGRES_DB", "backend_production") %>
+    DB_HOST: <%= ENV.fetch("DB_HOST") %>
+    PGSSLROOTCERT: <%= ENV.fetch("PGSSLROOTCERT", "") %>
 
     # Set number of processes dedicated to Solid Queue (default: 1)
     # JOB_CONCURRENCY: 3
 
     # Set number of cores available to the application on each server (default: 1).
     # WEB_CONCURRENCY: 2
-
-    # Match this to any external database server to configure Active Record correctly
-    # Use backend-db for a db accessory server on same machine via local kamal docker network.
-    # DB_HOST: 192.168.0.2
 
     # Log everything from Rails
     # RAILS_LOG_LEVEL: debug
