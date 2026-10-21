@@ -78,10 +78,10 @@ module Pix
       if value.match?(/\A\d{4}-\d{2}-\d{2}\z/)
         date = Date.iso8601(value)
         time = beginning ? date.in_time_zone.beginning_of_day : date.in_time_zone.end_of_day
-        return time.utc
+        time.utc
       else
         raise ArgumentError unless value.match?(/(?:Z|[+-]\d{2}:\d{2})\z/)
-        return Time.iso8601(value).utc
+        Time.iso8601(value).utc
       end
     rescue ArgumentError, Date::Error
       raise ArgumentError, "invalid date: #{value}"
