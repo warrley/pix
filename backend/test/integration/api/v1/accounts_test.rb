@@ -4,6 +4,7 @@ class Api::V1::AccountsTest < ActionDispatch::IntegrationTest
   setup do
     @user = users(:one)
     @account = accounts(:one)
+    authenticate_requests_as(@user)
   end
 
   test "GET /api/v1/users/:user_id/accounts returns all accounts belonging to the user" do

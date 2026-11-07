@@ -1,8 +1,10 @@
 module Api
   module V1
     class AccountTransfersController < ApplicationController
+      before_action -> { require_api_scope!("transfers:read") }
+
       def index
-        account = Account.find_by(id: params[:account_id])
+        account = current_user.accounts.find_by(id: params[:account_id])
 
         unless account
           render json: { error: "Account not found" }, status: :not_found

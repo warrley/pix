@@ -9,6 +9,7 @@ class Api::V1::UserReportsTest < ActionDispatch::IntegrationTest
 
     @external_user = User.create!(name: "Report API External", email: "report.api.external@example.com", doc_id: "11444777000161")
     @external_account = Account.create!(user: @external_user, status: :active)
+    authenticate_requests_as(@user)
   end
 
   test "GET user transaction report returns consolidated JSON by default" do

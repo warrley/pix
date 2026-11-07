@@ -20,6 +20,7 @@ class Api::V1::TransfersCancelTest < ActionDispatch::IntegrationTest
       pix_key_used: "receiver@example.com",
       status: :processing
     )
+    authenticate_requests_as(@user1)
   end
 
   test "should cancel a pending transaction and return 200 OK" do
@@ -43,7 +44,7 @@ class Api::V1::TransfersCancelTest < ActionDispatch::IntegrationTest
     assert_response :not_found
 
     json_response = JSON.parse(response.body)
-    assert_equal "Transaction not found", json_response["error"]
+    assert_equal "Record not found", json_response["error"]
   end
 
   test "should return 422 if transaction cannot be cancelled" do

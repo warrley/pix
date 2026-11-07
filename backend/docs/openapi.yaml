@@ -19,16 +19,19 @@ servers:
   - url: https://pix.warley.xyz
     description: Host configurado como permitido pela aplicação; confirme o ambiente antes de usar
 tags:
+  - name: Authentication
   - name: Health
   - name: Users
   - name: Accounts
   - name: PIX keys
   - name: Transfers
   - name: Reports
-security: []
+security:
+  - bearerAuth: []
 paths:
   /up:
     get:
+      security: []
       tags: [Health]
       summary: Verifica se a aplicação está disponível
       operationId: healthCheck
@@ -40,10 +43,52 @@ paths:
               schema:
                 type: string
 
+  /api/v1/auth/token:
+    post:
+      security: []
+      tags: [Authentication]
+      summary: Emite um token de acesso
+      operationId: createAccessToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: {type: string, format: email}
+                password: {type: string, format: password}
+                scopes:
+                  type: array
+                  items: {type: string}
+                  description: Escopos solicitados; o servidor limita aos escopos do papel do usuário.
+      responses:
+        '201':
+          description: Token emitido; o valor só é retornado nesta resposta.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessTokenResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          description: Muitas tentativas de autenticação
+    delete:
+      tags: [Authentication]
+      summary: Revoga o token atual
+      operationId: revokeAccessToken
+      responses:
+        '204':
+          description: Token revogado
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   /api/v1/users:
     post:
       tags: [Users]
       summary: Cria um usuário
+      description: Requer token com papel de operador e escopo users:admin; não há cadastro público.
       operationId: createUser
       requestBody:
         required: true
@@ -57,6 +102,7 @@ paths:
                 email: joao@example.com
                 doc_id: '52998224725'
                 phone: '+5585999999999'
+                password: 'use-a-unique-secret-of-12-chars'
       responses:
         '201':
           description: Usuário criado
@@ -575,6 +621,12 @@ paths:
           $ref: '#/components/responses/BusinessError'
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque
+
   parameters:
     UserId:
       name: id
@@ -621,6 +673,12 @@ components:
         default: json
 
   responses:
+    Unauthorized:
+      description: Token ausente, inválido, expirado ou revogado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
     BadRequest:
       description: Parâmetro obrigatório ausente ou inválido
       content:
@@ -652,6 +710,22 @@ components:
       description: Formato solicitado não suportado
 
   schemas:
+    AccessTokenResponse:
+      type: object
+      required: [data, error]
+      properties:
+        data:
+          type: object
+          required: [access_token, token_type, expires_at, scopes]
+          properties:
+            access_token: {type: string}
+            token_type: {type: string, const: Bearer}
+            expires_at: {type: string, format: date-time}
+            scopes:
+              type: array
+              items: {type: string}
+        error: {type: 'null'}
+
     MoneyValue:
       description: Valor monetário; a API atual alterna entre número e string decimal.
       oneOf:
@@ -664,7 +738,7 @@ components:
 
     User:
       type: object
-      required: [id, name, email, doc_id, created_at, updated_at]
+      required: [id, name, email, created_at, updated_at]
       properties:
         id:
           type: integer
@@ -676,11 +750,6 @@ components:
           type: string
           format: email
           example: joao@example.com
-        doc_id:
-          type: string
-          description: CPF ou CNPJ normalizado, sem pontuação.
-          pattern: '^\d{11}(\d{3})?$'
-          example: '52998224725'
         phone:
           type: [string, 'null']
           pattern: '^\+55\d{10,11}$'
@@ -698,12 +767,14 @@ components:
       properties:
         user:
           type: object
-          required: [name, email, doc_id]
+          description: Operadores provisionam usuários; o endpoint não permite auto cadastro público.
+          required: [name, email, doc_id, password]
           properties:
             name: {type: string, minLength: 1}
             email: {type: string, format: email}
             doc_id: {type: string, pattern: '^\d{11}(\d{3})?$'}
             phone: {type: string, pattern: '^\+55\d{10,11}$'}
+            password: {type: string, format: password, minLength: 12, maxLength: 128}
 
     UserUpdateBody:
       type: object
@@ -716,6 +787,7 @@ components:
             email: {type: string, format: email}
             doc_id: {type: string, pattern: '^\d{11}(\d{3})?$'}
             phone: {type: [string, 'null'], pattern: '^\+55\d{10,11}$'}
+            password: {type: string, format: password, minLength: 12, maxLength: 128}
 
     Account:
       type: object
@@ -829,7 +901,7 @@ components:
         user_name: {type: string}
         doc_id:
           type: string
-          description: Atualmente retornado sem máscara; revisar conforme a auditoria.
+          description: CPF/CNPJ mascarado; somente os quatro últimos dígitos são exibidos.
 
     TransferReceipt:
       type: object

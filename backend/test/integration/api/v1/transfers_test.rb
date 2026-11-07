@@ -9,6 +9,7 @@ class Api::V1::TransfersTest < ActionDispatch::IntegrationTest
     @dest_account = Account.create!(user: @receiver_user, balance: 100.00, status: "active")
 
     @pix_key = PixKey.create!(account: @dest_account, key_type: "email", key_value: "receiver_api@example.com", status: "active")
+    authenticate_requests_as(@sender_user)
   end
 
   test "POST /api/v1/transfers successfully creates transfer and returns receipt" do
@@ -30,6 +31,8 @@ class Api::V1::TransfersTest < ActionDispatch::IntegrationTest
     assert_equal "Payment for dinner", body.dig("data", "description")
     assert_equal @source_account.id, body.dig("data", "sender", "account_id")
     assert_equal @dest_account.id, body.dig("data", "receiver", "account_id")
+    assert_equal "*******4725", body.dig("data", "sender", "doc_id")
+    assert_equal "**********0161", body.dig("data", "receiver", "doc_id")
     assert_equal 450.00, @source_account.reload.balance
     assert_equal 150.00, @dest_account.reload.balance
 

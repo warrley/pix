@@ -2,6 +2,8 @@ module Api
   module V1
     class AccountReportsController < ApplicationController
       before_action :set_account
+      before_action -> { require_api_scope!("reports:read") }
+      before_action -> { authorize_account!(@account) }
 
       def statement
         result = Reports::AccountPeriodService.call(

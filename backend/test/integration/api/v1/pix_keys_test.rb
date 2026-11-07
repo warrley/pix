@@ -6,6 +6,7 @@ class Api::V1::PixKeysTest < ActionDispatch::IntegrationTest
     @user = users(:one)
     @user.update!(doc_id: "52998224725") # Ensure valid CPF for testing
     @existing_key = pix_keys(:default_email)
+    authenticate_requests_as(@user)
   end
 
   test "POST /api/v1/accounts/:account_id/pix_keys creates a PIX key" do

@@ -41,6 +41,29 @@ class UserTest < ActiveSupport::TestCase
     assert_includes user.errors[:email], "can't be blank"
   end
 
+  test "rejects passwords containing only whitespace" do
+    user = User.new(
+      name: "Whitespace Password",
+      email: "whitespace-password@example.com",
+      doc_id: "52998224725",
+      password: "            "
+    )
+
+    assert_not user.valid?
+    assert_includes user.errors[:password], "must contain a non-whitespace character"
+  end
+
+  test "accepts passphrases containing spaces" do
+    user = User.new(
+      name: "Passphrase User",
+      email: "passphrase@example.com",
+      doc_id: "52998224725",
+      password: "correct horse battery staple"
+    )
+
+    assert user.valid?, -> { user.errors.full_messages.to_sentence }
+  end
+
   test "rejects duplicate email regardless of case" do
     User.create!(name: "Alice", email: "alice.dup@example.com", doc_id: "51783429097")
 
