@@ -46,6 +46,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_000000) do
     t.index [ "user_id" ], name: "index_api_access_tokens_on_user_id"
   end
 
+  create_table "api_access_tokens", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "expires_at", null: false
+    t.datetime "last_used_at"
+    t.datetime "revoked_at"
+    t.string "scopes", default: [], null: false, array: true
+    t.string "token_digest", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index [ "token_digest" ], name: "index_api_access_tokens_on_token_digest", unique: true
+    t.index [ "user_id", "expires_at" ], name: "index_api_access_tokens_on_user_id_and_expires_at"
+    t.index [ "user_id" ], name: "index_api_access_tokens_on_user_id"
+  end
+
   create_table "pix_keys", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.datetime "created_at", null: false
