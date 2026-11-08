@@ -28,7 +28,11 @@ Rails.application.routes.draw do
         resources :transfers, only: [ :index ], controller: "account_transfers"
         get "reports/statement", to: "account_reports#statement"
       end
-      resources :pix_keys, only: [ :destroy ]
+      resources :pix_keys, only: [ :destroy ] do
+        member do
+          patch :unblock
+        end
+      end
       resources :transfers, only: [ :create, :show ] do
         member do
           post :cancel

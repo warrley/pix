@@ -2,11 +2,11 @@ module Api
   module V1
     class PixKeysController < ApplicationController
       before_action :set_account, only: [ :create, :index ]
-      before_action :set_pix_key, only: [ :destroy ]
-      before_action -> { require_api_scope!("pix_keys:write") }, only: [ :create, :destroy ]
+      before_action :set_pix_key, only: [ :destroy, :unblock ]
+      before_action -> { require_api_scope!("pix_keys:write") }, only: [ :create, :destroy, :unblock ]
       before_action -> { require_api_scope!("pix_keys:read") }, only: :index
       before_action -> { authorize_account!(@account) }, only: [ :create, :index ]
-      before_action -> { authorize_account!(@pix_key.account) }, only: :destroy
+      before_action -> { authorize_account!(@pix_key.account) }, only: [ :destroy, :unblock ]
 
       def create
         @pix_key = @account.pix_keys.build(pix_key_params)
@@ -30,6 +30,16 @@ module Api
           head :no_content
         else
           render_error(@pix_key.errors.to_hash)
+        end
+      end
+
+      def unblock
+        result = Pix::KeyLifecycleService.unblock(@pix_key)
+
+        if result.success?
+          render_success(result.pix_key)
+        else
+          render_error(result.error)
         end
       end
 
