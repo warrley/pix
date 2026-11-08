@@ -38,6 +38,7 @@ Rails.application.routes.draw do
         end
         member do
           patch :unblock
+          patch :reassociate
         end
       end
       resources :transfers, only: [ :create, :show ] do

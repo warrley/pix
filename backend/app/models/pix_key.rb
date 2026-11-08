@@ -40,6 +40,16 @@ class PixKey < ApplicationRecord
     self
   end
 
+  def reassociate_to!(new_account)
+    result = Pix::KeyLifecycleService.reassociate(self, new_account)
+    unless result.success?
+      errors.add(:base, result.error)
+      raise Pix::KeyLifecycleService::Error, result.error
+    end
+
+    self
+  end
+
   private
 
   def generate_random_key_value

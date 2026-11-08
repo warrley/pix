@@ -2,11 +2,11 @@ module Api
   module V1
     class PixKeysController < ApplicationController
       before_action :set_account, only: [ :create, :index ]
-      before_action :set_pix_key, only: [ :destroy, :unblock ]
-      before_action -> { require_api_scope!("pix_keys:write") }, only: [ :create, :destroy, :unblock ]
+      before_action :set_pix_key, only: [ :destroy, :unblock, :reassociate ]
+      before_action -> { require_api_scope!("pix_keys:write") }, only: [ :create, :destroy, :unblock, :reassociate ]
       before_action -> { require_api_scope!("pix_keys:read") }, only: [ :index, :lookup ]
       before_action -> { authorize_account!(@account) }, only: [ :create, :index ]
-      before_action -> { authorize_account!(@pix_key.account) }, only: [ :destroy, :unblock ]
+      before_action -> { authorize_account!(@pix_key.account) }, only: [ :destroy, :unblock, :reassociate ]
 
       def lookup
         raw_key = params[:key].to_s.strip
@@ -74,6 +74,17 @@ module Api
         end
       end
 
+      def reassociate
+        target_account = Account.find(reassociate_account_id)
+        result = Pix::KeyLifecycleService.reassociate(@pix_key, target_account)
+
+        if result.success?
+          render_success(result.pix_key)
+        else
+          render_error(result.error)
+        end
+      end
+
       private
 
       def set_account
@@ -94,6 +105,10 @@ module Api
         return digits if [ 11, 14 ].include?(digits.length) && !value.include?("@") && !value.start_with?("+")
 
         value.downcase
+      end
+
+      def reassociate_account_id
+        params[:account_id].presence || params.dig(:pix_key, :account_id)
       end
     end
   end
