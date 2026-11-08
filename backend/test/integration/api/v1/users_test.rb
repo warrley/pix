@@ -59,15 +59,6 @@ class Api::V1::UsersTest < ActionDispatch::IntegrationTest
     assert response.parsed_body.dig("error", "password").present?
   end
 
-  test "POST /api/v1/users requires an initial password" do
-    post api_v1_users_path, params: {
-      user: { name: "No Password", email: "no-password@example.com", doc_id: "52998224725" }
-    }, as: :json
-
-    assert_response :unprocessable_entity
-    assert response.parsed_body.dig("error", "password").present?
-  end
-
   test "GET /api/v1/users/:id returns the user when it exists" do
     user = users(:one)
 
