@@ -30,6 +30,16 @@ class PixKey < ApplicationRecord
   validate :tax_id_key_must_match_account_owner
   validate :account_must_be_active, on: :create
 
+  def unblock!
+    result = Pix::KeyLifecycleService.unblock(self)
+    unless result.success?
+      errors.add(:base, result.error)
+      raise Pix::KeyLifecycleService::Error, result.error
+    end
+
+    self
+  end
+
   private
 
   def generate_random_key_value
