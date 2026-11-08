@@ -55,7 +55,7 @@ module Api
 
       def cancel
         transaction = Transaction.find_by(id: params[:id])
-        return render_not_found unless transaction && owns_transaction?(transaction)
+        return render_error("Transaction not found", status: :not_found, code: "transaction.not_found") unless transaction && owns_transaction?(transaction)
 
         result = Pix::CancelTransferService.call(transaction_id: params[:id], reason: params[:reason])
 

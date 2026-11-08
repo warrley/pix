@@ -56,7 +56,8 @@ class Api::V1::UsersTest < ActionDispatch::IntegrationTest
     }, as: :json
 
     assert_response :unprocessable_entity
-    assert response.parsed_body.dig("error", "password").present?
+    assert response.parsed_body["errors"].is_a?(Hash)
+    assert response.parsed_body["errors"].key?("password")
   end
 
   test "GET /api/v1/users/:id returns the user when it exists" do
