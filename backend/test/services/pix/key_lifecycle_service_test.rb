@@ -151,4 +151,120 @@ class Pix::KeyLifecycleServiceTest < ActiveSupport::TestCase
     assert_equal @suspended_key.id, unblocked.id
     assert_equal "active", unblocked.reload.status
   end
+
+  test "successfully reassociates an active key to another account of the same user" do
+    target_account = Account.create!(user: @user, balance: 100.0, status: "active")
+    active_key = PixKey.create!(account: @account, key_type: "email", key_value: "portability@example.com", status: :active)
+
+    result = Pix::KeyLifecycleService.reassociate(active_key, target_account)
+
+    assert result.success?
+    assert_nil result.error
+    assert_equal target_account.id, active_key.reload.account_id
+  end
+
+  test "fails to reassociate a suspended key" do
+    target_account = Account.create!(user: @user, balance: 100.0, status: "active")
+
+    result = Pix::KeyLifecycleService.reassociate(@suspended_key, target_account)
+
+    assert_not result.success?
+    assert_equal "Only active keys can be moved", result.error
+  end
+
+  test "fails to reassociate a cancelled key" do
+    target_account = Account.create!(user: @user, balance: 100.0, status: "active")
+    cancelled_key = PixKey.create!(account: @account, key_type: "email", key_value: "cancelled_move@example.com", status: :cancelled)
+
+    result = Pix::KeyLifecycleService.reassociate(cancelled_key, target_account)
+
+    assert_not result.success?
+    assert_equal "Only active keys can be moved", result.error
+  end
+
+  test "fails to reassociate to an account of another user" do
+    other_user = User.create!(name: "Other User", email: "other_user_assoc@example.com", doc_id: "04252011000110")
+    other_account = Account.create!(user: other_user, balance: 100.0, status: "active")
+    active_key = PixKey.create!(account: @account, key_type: "email", key_value: "other_user_move@example.com", status: :active)
+
+    result = Pix::KeyLifecycleService.reassociate(active_key, other_account)
+
+    assert_not result.success?
+    assert_equal "New account must belong to the same user", result.error
+  end
+
+  test "fails to reassociate when target account is blocked" do
+    target_account = Account.create!(user: @user, balance: 100.0, status: "blocked")
+    active_key = PixKey.create!(account: @account, key_type: "email", key_value: "target_blocked@example.com", status: :active)
+
+    result = Pix::KeyLifecycleService.reassociate(active_key, target_account)
+
+    assert_not result.success?
+    assert_equal "Account is fraud-blocked", result.error
+  end
+
+  test "fails to reassociate when target account is fraud-blocked" do
+    target_account = Account.create!(user: @user, balance: 100.0, status: "active", fraud_blocked: true)
+    active_key = PixKey.create!(account: @account, key_type: "email", key_value: "target_fraud@example.com", status: :active)
+
+    result = Pix::KeyLifecycleService.reassociate(active_key, target_account)
+
+    assert_not result.success?
+    assert_equal "Account is fraud-blocked", result.error
+  end
+
+  test "fails to reassociate when target account is closed" do
+    target_account = Account.create!(user: @user, balance: 100.0, status: "closed")
+    active_key = PixKey.create!(account: @account, key_type: "email", key_value: "target_closed@example.com", status: :active)
+
+    result = Pix::KeyLifecycleService.reassociate(active_key, target_account)
+
+    assert_not result.success?
+    assert_equal "New account must be active", result.error
+  end
+
+  test "fails to reassociate when target account already has 5 active keys" do
+    target_account = Account.create!(user: @user, balance: 100.0, status: "active")
+    5.times do |i|
+      PixKey.create!(account: target_account, key_type: "email", key_value: "target_active#{i}@example.com", status: :active)
+    end
+    active_key = PixKey.create!(account: @account, key_type: "email", key_value: "target_sixth@example.com", status: :active)
+
+    result = Pix::KeyLifecycleService.reassociate(active_key, target_account)
+
+    assert_not result.success?
+    assert_equal "maximum of 5 active PIX keys per account reached", result.error
+  end
+
+  test "reassociate returns not found for unknown key or unknown account" do
+    target_account = Account.create!(user: @user, balance: 100.0, status: "active")
+    active_key = PixKey.create!(account: @account, key_type: "email", key_value: "unknown_test@example.com", status: :active)
+
+    result = Pix::KeyLifecycleService.reassociate(999_999, target_account)
+    assert_not result.success?
+    assert_equal "Record not found", result.error
+
+    result2 = Pix::KeyLifecycleService.reassociate(active_key, 999_999)
+    assert_not result2.success?
+    assert_equal "Account not found", result2.error
+  end
+
+  test "reassociate! raises error when reassociate fails" do
+    target_account = Account.create!(user: @user, balance: 100.0, status: "closed")
+    active_key = PixKey.create!(account: @account, key_type: "email", key_value: "raise_err@example.com", status: :active)
+
+    assert_raises(Pix::KeyLifecycleService::Error) do
+      Pix::KeyLifecycleService.reassociate!(active_key, target_account)
+    end
+  end
+
+  test "reassociate! returns the pix key when successful" do
+    target_account = Account.create!(user: @user, balance: 100.0, status: "active")
+    active_key = PixKey.create!(account: @account, key_type: "email", key_value: "bang_success@example.com", status: :active)
+
+    reassociated = Pix::KeyLifecycleService.reassociate!(active_key, target_account)
+
+    assert_equal active_key.id, reassociated.id
+    assert_equal target_account.id, reassociated.reload.account_id
+  end
 end

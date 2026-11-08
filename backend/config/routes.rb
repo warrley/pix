@@ -31,6 +31,7 @@ Rails.application.routes.draw do
       resources :pix_keys, only: [ :destroy ] do
         member do
           patch :unblock
+          patch :reassociate
         end
       end
       resources :transfers, only: [ :create, :show ] do

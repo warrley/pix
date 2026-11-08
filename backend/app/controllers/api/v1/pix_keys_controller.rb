@@ -2,11 +2,11 @@ module Api
   module V1
     class PixKeysController < ApplicationController
       before_action :set_account, only: [ :create, :index ]
-      before_action :set_pix_key, only: [ :destroy, :unblock ]
-      before_action -> { require_api_scope!("pix_keys:write") }, only: [ :create, :destroy, :unblock ]
+      before_action :set_pix_key, only: [ :destroy, :unblock, :reassociate ]
+      before_action -> { require_api_scope!("pix_keys:write") }, only: [ :create, :destroy, :unblock, :reassociate ]
       before_action -> { require_api_scope!("pix_keys:read") }, only: :index
       before_action -> { authorize_account!(@account) }, only: [ :create, :index ]
-      before_action -> { authorize_account!(@pix_key.account) }, only: [ :destroy, :unblock ]
+      before_action -> { authorize_account!(@pix_key.account) }, only: [ :destroy, :unblock, :reassociate ]
 
       def create
         @pix_key = @account.pix_keys.build(pix_key_params)
@@ -43,6 +43,17 @@ module Api
         end
       end
 
+      def reassociate
+        target_account = Account.find(reassociate_account_id)
+        result = Pix::KeyLifecycleService.reassociate(@pix_key, target_account)
+
+        if result.success?
+          render_success(result.pix_key)
+        else
+          render_error(result.error)
+        end
+      end
+
       private
 
       def set_account
@@ -55,6 +66,10 @@ module Api
 
       def pix_key_params
         params.require(:pix_key).permit(:key_type, :key_value)
+      end
+
+      def reassociate_account_id
+        params[:account_id].presence || params.dig(:pix_key, :account_id)
       end
     end
   end

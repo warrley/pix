@@ -211,4 +211,78 @@ class Api::V1::PixKeysTest < ActionDispatch::IntegrationTest
     assert_response :not_found
     assert_equal "Record not found", response.parsed_body["error"]
   end
+
+  test "PATCH /api/v1/pix_keys/:id/reassociate moves key to another account of same owner and returns 200" do
+    target_account = Account.create!(user: @user, balance: 100.0, status: "active")
+    active_key = PixKey.create!(account: @account, key_type: "email", key_value: "move_api@example.com", status: :active)
+
+    patch reassociate_api_v1_pix_key_path(id: active_key.id), params: { account_id: target_account.id }, as: :json
+
+    assert_response :ok
+    assert_equal target_account.id, response.parsed_body.dig("data", "account_id")
+    assert_equal target_account.id, active_key.reload.account_id
+    assert_nil response.parsed_body["error"]
+  end
+
+  test "PATCH /api/v1/pix_keys/:id/reassociate returns 422 when target account belongs to another user" do
+    other_user = User.create!(name: "Other User", email: "other_api@example.com", doc_id: "04252011000110")
+    other_account = Account.create!(user: other_user, balance: 100.0, status: "active")
+    active_key = PixKey.create!(account: @account, key_type: "email", key_value: "other_owner_api@example.com", status: :active)
+
+    patch reassociate_api_v1_pix_key_path(id: active_key.id), params: { account_id: other_account.id }, as: :json
+
+    assert_response :unprocessable_entity
+    assert_not_nil response.parsed_body["error"]
+  end
+
+  test "PATCH /api/v1/pix_keys/:id/reassociate returns 422 when target account has 5 active keys" do
+    target_account = Account.create!(user: @user, balance: 100.0, status: "active")
+    5.times do |i|
+      PixKey.create!(account: target_account, key_type: "email", key_value: "target_limit_api_#{i}@example.com", status: :active)
+    end
+    active_key = PixKey.create!(account: @account, key_type: "email", key_value: "sixth_move_api@example.com", status: :active)
+
+    patch reassociate_api_v1_pix_key_path(id: active_key.id), params: { account_id: target_account.id }, as: :json
+
+    assert_response :unprocessable_entity
+    assert_not_nil response.parsed_body["error"]
+  end
+
+  test "PATCH /api/v1/pix_keys/:id/reassociate returns 422 when target account is not active" do
+    target_account = Account.create!(user: @user, balance: 100.0, status: "closed")
+    active_key = PixKey.create!(account: @account, key_type: "email", key_value: "closed_target_api@example.com", status: :active)
+
+    patch reassociate_api_v1_pix_key_path(id: active_key.id), params: { account_id: target_account.id }, as: :json
+
+    assert_response :unprocessable_entity
+    assert_not_nil response.parsed_body["error"]
+  end
+
+  test "PATCH /api/v1/pix_keys/:id/reassociate returns 422 when key is not active" do
+    target_account = Account.create!(user: @user, balance: 100.0, status: "active")
+    suspended_key = PixKey.create!(account: @account, key_type: "email", key_value: "suspended_move_api@example.com", status: :suspended)
+
+    patch reassociate_api_v1_pix_key_path(id: suspended_key.id), params: { account_id: target_account.id }, as: :json
+
+    assert_response :unprocessable_entity
+    assert_not_nil response.parsed_body["error"]
+  end
+
+  test "PATCH /api/v1/pix_keys/:id/reassociate returns 404 when key not found" do
+    target_account = Account.create!(user: @user, balance: 100.0, status: "active")
+
+    patch reassociate_api_v1_pix_key_path(id: 999_999), params: { account_id: target_account.id }, as: :json
+
+    assert_response :not_found
+    assert_equal "Record not found", response.parsed_body["error"]
+  end
+
+  test "PATCH /api/v1/pix_keys/:id/reassociate returns 404 when target account not found" do
+    active_key = PixKey.create!(account: @account, key_type: "email", key_value: "no_acc_api@example.com", status: :active)
+
+    patch reassociate_api_v1_pix_key_path(id: active_key.id), params: { account_id: 999_999 }, as: :json
+
+    assert_response :not_found
+    assert_equal "Record not found", response.parsed_body["error"]
+  end
 end

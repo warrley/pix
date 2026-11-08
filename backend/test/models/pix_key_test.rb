@@ -107,4 +107,46 @@ class PixKeyTest < ActiveSupport::TestCase
     end
     assert_equal "Account is fraud-blocked", err.message
   end
+
+  test "reassociate_to! moves key to another account of the same owner" do
+    target_account = Account.create!(user: @user, balance: 50.0, status: "active")
+    active_key = PixKey.create!(account: @account, key_type: "email", key_value: "reassociate_model@example.com", status: :active)
+
+    assert active_key.reassociate_to!(target_account)
+    assert_equal target_account.id, active_key.reload.account_id
+  end
+
+  test "reassociate_to! raises error when target account belongs to another user" do
+    other_user = User.create!(name: "Another User", email: "another_model@example.com", doc_id: "04252011000110")
+    other_account = Account.create!(user: other_user, balance: 50.0, status: "active")
+    active_key = PixKey.create!(account: @account, key_type: "email", key_value: "reassociate_other_model@example.com", status: :active)
+
+    err = assert_raises(StandardError) do
+      active_key.reassociate_to!(other_account)
+    end
+    assert_equal "New account must belong to the same user", err.message
+  end
+
+  test "reassociate_to! raises error when key is not active" do
+    target_account = Account.create!(user: @user, balance: 50.0, status: "active")
+    suspended_key = PixKey.create!(account: @account, key_type: "email", key_value: "reassociate_suspended_model@example.com", status: :suspended)
+
+    err = assert_raises(StandardError) do
+      suspended_key.reassociate_to!(target_account)
+    end
+    assert_equal "Only active keys can be moved", err.message
+  end
+
+  test "reassociate_to! raises error when target account exceeds 5 active keys" do
+    target_account = Account.create!(user: @user, balance: 50.0, status: "active")
+    5.times do |i|
+      PixKey.create!(account: target_account, key_type: "email", key_value: "target_model_limit_#{i}@example.com", status: :active)
+    end
+    active_key = PixKey.create!(account: @account, key_type: "email", key_value: "reassociate_limit_model@example.com", status: :active)
+
+    err = assert_raises(StandardError) do
+      active_key.reassociate_to!(target_account)
+    end
+    assert_equal "maximum of 5 active PIX keys per account reached", err.message
+  end
 end
