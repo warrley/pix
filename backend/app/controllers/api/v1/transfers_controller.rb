@@ -1,6 +1,7 @@
 module Api
   module V1
     class TransfersController < ApplicationController
+      wrap_parameters false
       before_action -> { require_api_scope!("transfers:write") }, only: :create
       before_action -> { require_api_scope!("transfers:read") }, only: :show
       before_action -> { require_api_scope!("transfers:write") }, only: :cancel
@@ -17,10 +18,11 @@ module Api
           return render_success(receipt_data(existing_tx), status: :ok) if existing_tx
         end
 
+        amount_cents = Pix::Money.parse_cents(transfer_params[:amount])
         result = Pix::TransferService.call(
           source_account_id: transfer_params[:source_account_id],
           pix_key: transfer_params[:pix_key],
-          amount: transfer_params[:amount],
+          amount_cents: amount_cents,
           description: transfer_params[:description],
           end_to_end_id: e2e_id
         )
@@ -29,8 +31,12 @@ module Api
           Security::AuditLogger.record(event: "transfer_created", actor: current_user, resource: result.transaction, request: request)
           render_success(receipt_data(result.transaction), status: :created)
         else
-          render_error(result.error, status: :unprocessable_entity)
+          render_error(result.error)
         end
+      rescue Pix::Money::AmountLimitExceeded => error
+        render_error(error.message, status: :unprocessable_entity, code: "amount.limit_exceeded")
+      rescue Pix::Money::InvalidAmount => error
+        render_error(error.message, status: :unprocessable_entity, code: "amount.invalid")
       end
 
       def show
@@ -49,17 +55,15 @@ module Api
 
       def cancel
         transaction = Transaction.find_by(id: params[:id])
-        return render_not_found unless transaction && owns_transaction?(transaction)
+        return render_error("Transaction not found", status: :not_found, code: "transaction.not_found") unless transaction && owns_transaction?(transaction)
 
         result = Pix::CancelTransferService.call(transaction_id: params[:id], reason: params[:reason])
 
         if result.success?
           Security::AuditLogger.record(event: "transfer_cancelled", actor: current_user, resource: result.transaction, request: request)
           render_success(receipt_data(result.transaction))
-        elsif result.error == "Transaction not found"
-          render_error(result.error, status: :not_found)
         else
-          render_error(result.error, status: :unprocessable_entity)
+          render_error(result.error)
         end
       end
 
@@ -77,7 +81,7 @@ module Api
       end
 
       def transfer_params
-        params.fetch(:transfer, params).permit(
+        params.require(:transfer).permit(
           :source_account_id,
           :pix_key,
           :amount,
@@ -90,7 +94,7 @@ module Api
         {
           id: tx.id,
           end_to_end_id: tx.end_to_end_id,
-          amount: tx.amount.to_f,
+          amount: Pix::Money.format_cents(tx.amount_cents),
           description: tx.description,
           status: tx.status,
           cancelled_at: tx.cancelled_at,

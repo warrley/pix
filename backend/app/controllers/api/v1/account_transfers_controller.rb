@@ -7,7 +7,7 @@ module Api
         account = current_user.accounts.find_by(id: params[:account_id])
 
         unless account
-          render json: { error: "Account not found" }, status: :not_found
+          render_error("Account not found", status: :not_found, code: "account.not_found")
           return
         end
 
@@ -21,8 +21,8 @@ module Api
         )
 
         render json: result, status: :ok
-      rescue ArgumentError => e
-        render json: { error: e.message }, status: :bad_request
+      rescue ArgumentError => error
+        render_error(error.message, status: :bad_request, code: "request.invalid_filter")
       end
     end
   end

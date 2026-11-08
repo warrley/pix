@@ -6,6 +6,10 @@ module Api
       before_action -> { authorize_account!(@account) }
 
       def statement
+        if params[:format].present? && !%w[json csv].include?(params[:format].to_s.downcase)
+          return render_error("The requested response format is not supported", status: :not_acceptable, code: "request.not_acceptable")
+        end
+
         result = Reports::AccountPeriodService.call(
           account_id: @account.id,
           start_date: params[:start_date],
@@ -15,7 +19,7 @@ module Api
         )
 
         unless result.success?
-          return render_error(result.error, status: :unprocessable_entity)
+          return render_error(result.error)
         end
 
         if params[:format].to_s.downcase == "csv" || request.format.csv?

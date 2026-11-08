@@ -21,25 +21,25 @@ class Reports::UserTransactionsServiceTest < ActiveSupport::TestCase
 
     assert_equal @user.id, report[:user_id]
     assert_equal 4, report.dig(:summary, :total_transactions_count)
-    assert_equal 185.0, report.dig(:summary, :total_sent_amount)
-    assert_equal 65.0, report.dig(:summary, :total_received_amount)
-    assert_equal(-120.0, report.dig(:summary, :net_balance_change))
-    assert_equal 56.25, report.dig(:summary, :average_ticket_amount)
+    assert_equal "185.00", report.dig(:summary, :total_sent_amount)
+    assert_equal "65.00", report.dig(:summary, :total_received_amount)
+    assert_equal "-120.00", report.dig(:summary, :net_balance_change)
+    assert_equal "56.25", report.dig(:summary, :average_ticket_amount)
 
     assert_equal [ @account_one.id, @account_two.id ], report[:accounts].pluck(:account_id)
     account_one_report = report[:accounts].first
     assert_equal 2, account_one_report[:total_transactions_count]
-    assert_equal 125.0, account_one_report[:total_sent_amount]
-    assert_equal 0.0, account_one_report[:total_received_amount]
-    assert_equal(-125.0, account_one_report[:net_balance_change])
-    assert_equal 62.5, account_one_report[:average_ticket_amount]
+    assert_equal "125.00", account_one_report[:total_sent_amount]
+    assert_equal "0.00", account_one_report[:total_received_amount]
+    assert_equal "-125.00", account_one_report[:net_balance_change]
+    assert_equal "62.50", account_one_report[:average_ticket_amount]
 
     account_two_report = report[:accounts].second
     assert_equal 3, account_two_report[:total_transactions_count]
-    assert_equal 60.0, account_two_report[:total_sent_amount]
-    assert_equal 65.0, account_two_report[:total_received_amount]
-    assert_equal 5.0, account_two_report[:net_balance_change]
-    assert_in_delta 41.666666, account_two_report[:average_ticket_amount], 0.000001
+    assert_equal "60.00", account_two_report[:total_sent_amount]
+    assert_equal "65.00", account_two_report[:total_received_amount]
+    assert_equal "5.00", account_two_report[:net_balance_change]
+    assert_equal "41.67", account_two_report[:average_ticket_amount]
   end
 
   test "does not include transactions belonging only to another user" do
@@ -51,7 +51,7 @@ class Reports::UserTransactionsServiceTest < ActiveSupport::TestCase
     report = Reports::UserTransactionsService.call(user_id: @user.id)
 
     assert_equal 1, report.dig(:summary, :total_transactions_count)
-    assert_equal 100.0, report.dig(:summary, :total_sent_amount)
+    assert_equal "100.00", report.dig(:summary, :total_sent_amount)
     assert_equal [ @account_one.id, @account_two.id ], report[:accounts].pluck(:account_id)
   end
 
@@ -64,27 +64,27 @@ class Reports::UserTransactionsServiceTest < ActiveSupport::TestCase
     report = Reports::UserTransactionsService.call(user_id: @user.id)
 
     assert_equal 1, report.dig(:summary, :total_transactions_count)
-    assert_equal 10.0, report.dig(:summary, :total_sent_amount)
-    assert_equal 0.0, report.dig(:summary, :total_received_amount)
-    assert_equal(-10.0, report.dig(:summary, :net_balance_change))
-    assert_equal 10.0, report.dig(:summary, :average_ticket_amount)
+    assert_equal "10.00", report.dig(:summary, :total_sent_amount)
+    assert_equal "0.00", report.dig(:summary, :total_received_amount)
+    assert_equal "-10.00", report.dig(:summary, :net_balance_change)
+    assert_equal "10.00", report.dig(:summary, :average_ticket_amount)
   end
 
   test "returns zero metrics while preserving accounts without completed transactions" do
     report = Reports::UserTransactionsService.call(user_id: @user.id)
 
     assert_equal 0, report.dig(:summary, :total_transactions_count)
-    assert_equal 0.0, report.dig(:summary, :total_sent_amount)
-    assert_equal 0.0, report.dig(:summary, :total_received_amount)
-    assert_equal 0.0, report.dig(:summary, :net_balance_change)
-    assert_equal 0.0, report.dig(:summary, :average_ticket_amount)
+    assert_equal "0.00", report.dig(:summary, :total_sent_amount)
+    assert_equal "0.00", report.dig(:summary, :total_received_amount)
+    assert_equal "0.00", report.dig(:summary, :net_balance_change)
+    assert_equal "0.00", report.dig(:summary, :average_ticket_amount)
     assert_equal 2, report[:accounts].size
     report[:accounts].each do |account_report|
       assert_equal 0, account_report[:total_transactions_count]
-      assert_equal 0.0, account_report[:total_sent_amount]
-      assert_equal 0.0, account_report[:total_received_amount]
-      assert_equal 0.0, account_report[:net_balance_change]
-      assert_equal 0.0, account_report[:average_ticket_amount]
+      assert_equal "0.00", account_report[:total_sent_amount]
+      assert_equal "0.00", account_report[:total_received_amount]
+      assert_equal "0.00", account_report[:net_balance_change]
+      assert_equal "0.00", account_report[:average_ticket_amount]
     end
   end
 
@@ -96,10 +96,10 @@ class Reports::UserTransactionsServiceTest < ActiveSupport::TestCase
     assert_equal user_without_accounts.id, report[:user_id]
     assert_empty report[:accounts]
     assert_equal 0, report.dig(:summary, :total_transactions_count)
-    assert_equal 0.0, report.dig(:summary, :total_sent_amount)
-    assert_equal 0.0, report.dig(:summary, :total_received_amount)
-    assert_equal 0.0, report.dig(:summary, :net_balance_change)
-    assert_equal 0.0, report.dig(:summary, :average_ticket_amount)
+    assert_equal "0.00", report.dig(:summary, :total_sent_amount)
+    assert_equal "0.00", report.dig(:summary, :total_received_amount)
+    assert_equal "0.00", report.dig(:summary, :net_balance_change)
+    assert_equal "0.00", report.dig(:summary, :average_ticket_amount)
   end
 
   test "raises when the user does not exist" do
@@ -116,7 +116,7 @@ class Reports::UserTransactionsServiceTest < ActiveSupport::TestCase
     report = Reports::UserTransactionsService.call(user_id: @user.id)
 
     assert_equal 3, report.dig(:summary, :total_transactions_count)
-    assert_in_delta 18.333333, report.dig(:summary, :average_ticket_amount), 0.000001
+    assert_equal "18.33", report.dig(:summary, :average_ticket_amount)
   end
 
   test "generates a parseable csv with account rows and a summary row" do

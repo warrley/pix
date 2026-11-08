@@ -29,6 +29,8 @@ module Backend
     # Middleware like session, flash, cookies can be added back manually.
     # Skip views, helpers and assets when generating a new resource.
     config.api_only = true
+    config.time_zone = "America/Sao_Paulo"
+    config.active_record.default_timezone = :utc
     cors_origins = ENV.fetch("CORS_ALLOWED_ORIGINS", "").split(",").map(&:strip).reject(&:blank?)
     config.middleware.insert_before 0, ApiCors, allowed_origins: cors_origins
 

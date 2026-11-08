@@ -15,13 +15,13 @@ class Reports::AccountPeriodServiceTest < ActiveSupport::TestCase
   test "returns error if account does not exist" do
     result = Reports::AccountPeriodService.call(account_id: 999_999)
     assert_not result.success?
-    assert_equal "Account not found", result.error
+    assert_equal "account.not_found", result.error.code
   end
 
   test "returns error for invalid month" do
     result = Reports::AccountPeriodService.call(account_id: @account1.id, month: 13, year: 2026)
     assert_not result.success?
-    assert_equal "Invalid month or year", result.error
+    assert_equal "period.invalid", result.error.code
   end
 
   test "returns error when start_date is after end_date" do
@@ -31,7 +31,7 @@ class Reports::AccountPeriodServiceTest < ActiveSupport::TestCase
       end_date: "2026-09-01"
     )
     assert_not result.success?
-    assert_equal "start_date cannot be after end_date", result.error
+    assert_equal "period.invalid_range", result.error.code
   end
 
   test "correctly handles periods with zero activity" do
@@ -44,10 +44,10 @@ class Reports::AccountPeriodServiceTest < ActiveSupport::TestCase
     assert result.success?
     data = result.data
 
-    assert_equal "1000.0", data[:opening_balance]
-    assert_equal "0.0", data[:total_inflows]
-    assert_equal "0.0", data[:total_outflows]
-    assert_equal "1000.0", data[:closing_balance]
+    assert_equal "1000.00", data[:opening_balance]
+    assert_equal "0.00", data[:total_inflows]
+    assert_equal "0.00", data[:total_outflows]
+    assert_equal "1000.00", data[:closing_balance]
     assert data[:reconciliation_valid]
     assert_equal 0, data[:transactions_count]
     assert_empty data[:transactions]
@@ -100,11 +100,11 @@ class Reports::AccountPeriodServiceTest < ActiveSupport::TestCase
     # Outflows desde 01/09: 200 + 100 = 300.
     # Inflows desde 01/09: 350.
     # Opening balance em 01/09: 1000.0 + 300 - 350 = 950.0
-    assert_equal "950.0", data[:opening_balance]
-    assert_equal "350.0", data[:total_inflows]
-    assert_equal "200.0", data[:total_outflows]
+    assert_equal "950.00", data[:opening_balance]
+    assert_equal "350.00", data[:total_inflows]
+    assert_equal "200.00", data[:total_outflows]
     # Closing balance em 30/09: 950.0 + 350.0 - 200.0 = 1100.0
-    assert_equal "1100.0", data[:closing_balance]
+    assert_equal "1100.00", data[:closing_balance]
     assert data[:reconciliation_valid]
     assert_equal 2, data[:transactions_count]
     assert_equal 2, data[:transactions].size

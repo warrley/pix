@@ -50,7 +50,7 @@ module Pix
       result = CancelTransferService.call(transaction_id: @transaction.id)
 
       assert_not result.success?
-      assert_equal "Cannot cancel a completed transaction", result.error
+      assert_equal "transaction.already_completed", result.error.code
 
       @source.reload
       assert_equal 400.0, @source.balance
@@ -63,7 +63,7 @@ module Pix
       result = CancelTransferService.call(transaction_id: @transaction.id)
 
       assert_not result.success?
-      assert_equal "Transaction is already cancelled", result.error
+      assert_equal "transaction.already_cancelled", result.error.code
 
       @source.reload
       assert_equal 400.0, @source.balance
@@ -86,7 +86,7 @@ module Pix
       result = CancelTransferService.call(transaction_id: -1)
 
       assert_not result.success?
-      assert_equal "Transaction not found", result.error
+      assert_equal "transaction.not_found", result.error.code
     end
 
     private

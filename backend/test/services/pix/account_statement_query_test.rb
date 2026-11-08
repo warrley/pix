@@ -18,7 +18,7 @@ class Pix::AccountStatementQueryTest < ActiveSupport::TestCase
       end_to_end_id: "E01011010202609211000abcde123451",
       pix_key_used: "bob@example.com",
       status: :completed,
-      created_at: Time.utc(2026, 9, 20, 0, 0, 0)
+      created_at: Time.utc(2026, 9, 20, 12, 0, 0)
     )
 
     @tx2 = Transaction.create!(
