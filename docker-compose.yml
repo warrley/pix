@@ -16,7 +16,10 @@ services:
       - "${DB_PORT_BINDING:-5433:5432}"
 
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      args:
+        BUNDLE_WITHOUT: ""
     entrypoint: []
     command: bash -c "rm -f tmp/pids/server.pid && bundle exec rails db:prepare && bundle exec rails s -p 3000 -b '0.0.0.0'"
     volumes:
@@ -25,6 +28,8 @@ services:
       - "${BACKEND_PORT_BINDING:-3000:3000}"
     environment:
       RAILS_ENV: ${RAILS_ENV:-development}
+      BUNDLE_PATH: /usr/local/bundle
+      BUNDLE_WITHOUT: ""
       DB_HOST: ${DB_HOST:-db}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
