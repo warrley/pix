@@ -1,3 +1,5 @@
+require_relative "domain_error"
+
 module Pix
   class TransferService
     DEFAULT_ISPB = "01011010"
@@ -8,12 +10,14 @@ module Pix
       new(...).call
     end
 
-    def initialize(source_account_id:, pix_key:, amount_cents:, description: nil, end_to_end_id: nil)
+    def initialize(source_account_id:, pix_key:, amount_cents:, description: nil, end_to_end_id: nil, record_failures: true, expected_destination_account_id: nil)
       @source_account_id = source_account_id
       @pix_key_raw = pix_key.to_s.strip
       @amount_cents = amount_cents
       @description = description
       @end_to_end_id = end_to_end_id.presence || generate_end_to_end_id
+      @record_failures = record_failures
+      @expected_destination_account_id = expected_destination_account_id
     end
 
     def call
@@ -27,7 +31,7 @@ module Pix
       transaction_record = nil
 
       begin
-        ActiveRecord::Base.transaction do
+        ActiveRecord::Base.transaction(requires_new: true) do
           first_id, second_id = [ @source_account_id, @destination_account.id ].sort
           locked_first = Account.lock.find(first_id)
           locked_second = Account.lock.find(second_id)
@@ -106,11 +110,15 @@ module Pix
       return DomainError.new(code: "account.blocked", message: "Source account is blocked", http_status: :unprocessable_entity) if @source_account.blocked?
       return DomainError.new(code: "account.closed", message: "Source account is closed", http_status: :unprocessable_entity) if @source_account.closed?
 
-      @pix_key = PixKey.find_by(key_value: normalize_key_value(@pix_key_raw))
+      normalized_key = self.class.normalize_key_value(@pix_key_raw)
+      @pix_key = PixKey.active.find_by(key_value: normalized_key) || PixKey.find_by(key_value: normalized_key)
       return DomainError.new(code: "pix_key.not_found", message: "PIX key not found", http_status: :not_found) unless @pix_key
       return DomainError.new(code: "pix_key.not_active", message: "PIX key is not active", http_status: :unprocessable_entity) unless @pix_key.active?
 
       @destination_account = @pix_key.account
+      if @expected_destination_account_id && @destination_account.id != @expected_destination_account_id
+        return DomainError.new(code: "pix_key.destination_changed", message: "PIX key destination changed", http_status: :unprocessable_entity)
+      end
       return DomainError.new(code: "account.not_found", message: "Destination account not found", http_status: :not_found) unless @destination_account
       return DomainError.new(code: "account.fraud_blocked", message: "Destination account is blocked for suspected fraud", http_status: :unprocessable_entity) if @destination_account.fraud_blocked?
       return DomainError.new(code: "account.closed", message: "Destination account is closed", http_status: :unprocessable_entity) if @destination_account.closed?
@@ -127,6 +135,7 @@ module Pix
     end
 
     def record_failed_transaction(reason)
+      return nil unless @record_failures
       return nil unless @source_account && @destination_account && @source_account.id != @destination_account.id
 
       Transaction.create(
@@ -156,7 +165,7 @@ module Pix
       )
     end
 
-    def normalize_key_value(value)
+    def self.normalize_key_value(value)
       digits = value.gsub(/\D/, "")
       return digits if [ 11, 14 ].include?(digits.length) && !value.include?("@")
 

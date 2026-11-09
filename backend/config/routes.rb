@@ -26,6 +26,7 @@ Rails.application.routes.draw do
         end
         resources :pix_keys, only: [ :create, :index ]
         resources :transfers, only: [ :index ], controller: "account_transfers"
+        resources :scheduled_transfers, only: [ :create, :index ], controller: "scheduled_transfers"
         get "reports/statement", to: "account_reports#statement"
       end
       resources :pix_keys, only: [ :destroy ] do
@@ -38,6 +39,7 @@ Rails.application.routes.draw do
           post :cancel
         end
       end
+      resources :scheduled_transfers, only: [ :destroy ], controller: "scheduled_transfers"
     end
   end
 
