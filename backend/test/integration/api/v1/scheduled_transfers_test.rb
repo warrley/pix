@@ -22,7 +22,7 @@ class Api::V1::ScheduledTransfersTest < ActionDispatch::IntegrationTest
 
     get "/api/v1/accounts/#{@account.id}/scheduled_transfers"
     assert_response :success
-    assert_equal [created_id], response.parsed_body.dig("data").map { |item| item["id"] }
+    assert_equal [ created_id ], response.parsed_body.dig("data").map { |item| item["id"] }
   end
 
   test "cancels only pending scheduled transfers" do
