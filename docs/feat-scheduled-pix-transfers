@@ -1,0 +1,138 @@
+# Planejamento: transferências Pix agendadas
+
+## Objetivo
+
+Permitir que uma pessoa agende uma transferência Pix para uma data futura, consulte seus agendamentos e cancele os que ainda estão pendentes. Um processo em background deve tentar executar cada agendamento na data definida, usando as mesmas regras financeiras e de segurança de uma transferência imediata.
+
+## Leitura do sistema atual
+
+- O backend é Rails 8.1 com PostgreSQL. A API está em `backend/app/controllers/api/v1` e exige token Bearer e escopos.
+- `Pix::TransferService` é o ponto central da transferência: valida conta e chave, bloqueios, auto transferência, saldo e limites; bloqueia as contas em ordem determinística, grava `Transaction` e `TransactionEvent`, atualiza saldos na mesma transação e agenda notificações.
+- Valores são persistidos em `amount_cents` (inteiro), com conversão e validação por `Pix::Money`. Não se deve introduzir `decimal`/float no novo modelo.
+- Chaves Pix podem ser suspensas ou canceladas. O serviço atual resolve a chave ativa no momento da transferência; guardar apenas seu valor permite que a execução falhe se a chave deixar de estar ativa.
+- Os testes do backend usam Minitest (`backend/test`), não RSpec.
+- Jobs herdam de `ApplicationJob`; notificações usam `Notifications::Enqueuer` e `TransactionNotificationJob`. Solid Queue já está configurado e `config/recurring.yml` agenda tarefas em produção.
+- A API limita acesso por conta consultando `current_user.accounts`; tokens já têm `transfers:read` e `transfers:write`. A especificação OpenAPI fica em `backend/docs/openapi.yaml`.
+- Os limites diário e noturno são avaliados na hora real da execução em `Pix::TransferLimitPolicy`. A conta precisa ter saldo suficiente quando o job rodar; o saldo não é reservado no agendamento.
+
+## Decisões de produto e domínio
+
+1. **Data e fuso:** `scheduled_for` é uma data civil, não um horário escolhido pelo cliente. Persistir como `date`, interpretar “hoje” e “futuro” no fuso `America/Sao_Paulo`, o mesmo usado na política de limites. O job roda diariamente e processa datas menores ou iguais à data local atual. A API não promete execução em horário exato.
+2. **Chave Pix:** salvar o valor informado em `pix_key_used` como snapshot auditável. Resolver a chave ativa novamente na execução por meio do `TransferService`. Chave ausente, inativa ou transferida para outro titular resulta em falha registrada; não selecionar automaticamente uma chave diferente.
+3. **Falha de execução:** falhas de negócio (saldo, limite, conta/chave inválida ou bloqueios) encerram o agendamento como `failed`, com motivo limitado a 255 caracteres. Não fazer retry automático de falha de negócio; permitir ao usuário criar outro agendamento após corrigir a causa. Erros transitórios de infraestrutura podem ser retentados pelo job, desde que a operação seja idempotente.
+4. **Idempotência e concorrência:** cada agendamento recebe uma chave estável de execução (ou `end_to_end_id`) com índice único; o claim do registro e a execução precisam impedir dois workers de debitar em duplicidade. `TransferService` já aceita `end_to_end_id`, então reutilizar o mesmo em retries. Não marcar `executed` se não houver uma transação concluída associada.
+5. **Estados:** `pending`, `processing`, `executed`, `cancelled`, `failed`. `processing` é necessário para claim/recuperação concorrente, embora o rascunho inicial não o previsse. Transições permitidas: `pending → processing → executed|failed`; `pending → cancelled`; claim abandonado pode voltar a `pending` somente após detectar lease vencido e confirmar que não há transação concluída para a chave idempotente.
+6. **Cancelamento:** permitido apenas em `pending`. Claim e cancelamento devem serializar pelo lock da linha; se o job já assumiu o registro, cancelar retorna `422`.
+7. **Autorização:** criação/listagem exigem `transfers:write`/`transfers:read`; cancelamento exige `transfers:write`. Conta deve pertencer ao usuário autenticado. IDs alheios ou inexistentes retornam `404`, preservando o padrão atual de não revelar recursos de terceiros.
+
+## Modelo e persistência propostos
+
+Tabela `scheduled_transfers`:
+
+| Campo | Tipo / regra |
+|---|---|
+| `account_id` | bigint, FK para `accounts`, obrigatório |
+| `destination_account_id` | bigint, FK para `accounts`, obrigatório; conta vinculada à chave ativa na criação |
+| `pix_key_used` | string(77), obrigatório |
+| `amount_cents` | bigint, obrigatório, `CHECK > 0` |
+| `description` | string(140), opcional |
+| `scheduled_for` | date, obrigatório |
+| `status` | string(20), obrigatório, default `pending`, check dos estados válidos |
+| `failure_reason` | string(255), opcional |
+| `transaction_id` | bigint, FK para `transactions`, opcional; único quando presente |
+| `execution_key` | string(32), obrigatório e único; chave estável passada ao `TransferService` |
+| timestamps | Rails |
+
+Adicionar índices para `(status, scheduled_for)` para busca do job e `(account_id, scheduled_for, id)` para listagem. Adicionar checks de montante e estado; FK com `restrict` para histórico não desaparecer junto da conta/transação. Guardar a conta destinatária identificada pela chave ativa na criação e confirmar que a chave ainda aponta para ela antes do débito.
+
+`ScheduledTransfer` deve validar presença, descrição, valor positivo, status e data futura no fuso acordado. A validação de modelo melhora os erros, mas o banco deve preservar invariantes estruturais. A API converte o valor decimal recebido para centavos via `Pix::Money.parse_cents`.
+
+## Fluxos e lógica
+
+### Criar
+
+1. Validar escopo `transfers:write`, localizar a conta em `current_user.accounts` e validar parâmetros permitidos.
+2. Validar formato/limite do valor, chave não vazia (máximo 77), descrição (máximo 140) e data futura em `America/Sao_Paulo`.
+3. Persistir `pending`, snapshot da chave, centavos e `execution_key` único. Não alterar saldo nem criar `Transaction` neste momento.
+4. Retornar `201` com dados do agendamento, status e timestamps.
+
+### Listar
+
+1. Validar `transfers:read` e propriedade da conta.
+2. Retornar somente agendamentos daquela conta do usuário; ordenar por `scheduled_for`, depois `id`.
+3. Paginação: seguir convenções existentes se houver; caso contrário, definir parâmetros e limites antes de publicar contrato na OpenAPI.
+
+### Executar
+
+1. Um job recorrente diário seleciona em lotes registros `pending` com `scheduled_for <= hoje_local`.
+2. Fazer claim atômico/lock do agendamento; apenas um worker pode mover `pending` para `processing`.
+3. Chamar `Pix::TransferService` com `source_account_id`, chave snapshot, `amount_cents`, descrição e `execution_key` como `end_to_end_id`.
+4. Em sucesso, gravar `executed` e `transaction_id`. A transferência/notificações seguem os fluxos existentes.
+5. Em erro de domínio, gravar `failed` e `failure_reason`; continuar o lote para os demais agendamentos.
+6. Em exceção transitória, liberar/reprogramar o claim sem criar nova chave idempotente. Na recuperação, consultar a transação pela chave estável antes de tentar novamente: concluída → `executed`; falha terminal → `failed`; inexistente → tentar novamente.
+7. Registrar logs estruturados com ID do agendamento e resultado, sem incluir chave Pix completa desnecessariamente.
+
+**Atenção de integração:** o serviço atual cria uma transação `failed` para certas falhas de negócio e pode retornar `transaction: nil` em outras. O job deve distinguir `success?` do estado da `transaction`, salvar somente uma transação compatível em `transaction_id` e tratar exceções separadamente. Também verificar se os callbacks de notificação não são duplicados em retries.
+
+### Cancelar
+
+1. Localizar o registro sob uma conta pertencente ao usuário (ou escopo equivalente que preserve ocultação de IDs alheios).
+2. Sob lock da linha, se status for `pending`, alterar para `cancelled` e retornar `200`.
+3. Se status for `processing`, `executed`, `failed` ou `cancelled`, retornar `422` com código estável, por exemplo `scheduled_transfer.not_cancellable`.
+
+## API proposta
+
+- `POST /api/v1/accounts/:account_id/scheduled_transfers` — `transfers:write`.
+- `GET /api/v1/accounts/:account_id/scheduled_transfers` — `transfers:read`.
+- `DELETE /api/v1/scheduled_transfers/:id` — `transfers:write`.
+
+Envelope de resposta deve seguir `render_success`/`render_error` atual. Fixar no OpenAPI nomes de parâmetros, formato da data (`YYYY-MM-DD`), valor monetário, filtros/paginação e códigos de erro. Atualizar a coleção Postman se ela for mantida como contrato operacional.
+
+## Critérios de aceite
+
+### Dados e validação
+
+- [ ] Migração cria tabela, FKs, índices e constraints; centavos positivos e status inválido são rejeitados pelo banco.
+- [ ] Data anterior ou igual à data local de hoje é rejeitada na criação; data futura válida em `America/Sao_Paulo` é aceita independente do fuso do servidor.
+- [ ] Valores inválidos, zero/negativos, acima do limite do sistema, chave acima de 77 caracteres e descrição acima de 140 retornam erro de validação consistente.
+- [ ] O agendamento não reserva nem altera saldo e não cria transação antes da execução.
+
+### API e segurança
+
+- [ ] Criar agendamento válido retorna `201` com status `pending` e dados persistidos.
+- [ ] Listar retorna somente a conta solicitada, em ordem estável; conta de outro usuário retorna `404`.
+- [ ] Usuário/token sem escopo necessário recebe `403`; sem autenticação recebe `401`.
+- [ ] Cancelar `pending` retorna `200` e estado `cancelled`; cancelar demais estados retorna `422`.
+- [ ] Cancelar/listar ID inexistente ou pertencente a terceiro retorna `404`.
+
+### Job e integridade financeira
+
+- [ ] Apenas registros devidos e `pending` são candidatos; datas futuras não executam.
+- [ ] Duas execuções concorrentes ou retry do mesmo job não produzem dois débitos/transações concluídas.
+- [ ] Sucesso chama `TransferService`, atualiza o agendamento para `executed`, associa a transação e gera uma transferência normal com evento/notificações existentes.
+- [ ] Saldo insuficiente, limite excedido, conta bloqueada/encerrada, chave inativa/inexistente e auto transferência registram falha sem interromper os demais registros do lote.
+- [ ] Erro transitório pode ser reprocessado sem duplicar transferência; claim abandonado tem recuperação documentada e testada.
+- [ ] Falha e execução não sobrescrevem cancelamento concorrente nem estado terminal.
+
+### Entrega técnica
+
+- [ ] Testes Minitest cobrem modelo, job (incluindo concorrência/idempotência), integração da API, escopos e isolamento por usuário.
+- [ ] `backend/docs/openapi.yaml` e coleção Postman são atualizados conforme aplicável.
+- [ ] `config/recurring.yml` agenda o processamento diário em produção; operação local/teste pode invocar o job diretamente.
+- [ ] Migração e documentação do banco são atualizadas; executar a suíte existente e os testes adicionados antes de abrir PR.
+
+## Sequência sugerida de implementação
+
+1. Fechar decisões de contrato (data, estados, códigos de erro, paginação) e atualizar este documento/OpenAPI.
+2. Criar migração, constraints, modelo, associações e testes de validação.
+3. Implementar API de criação/listagem/cancelamento e testes de integração/autorização.
+4. Implementar executor idempotente com claim, recuperação e testes de falha/concorrência.
+5. Configurar recorrência Solid Queue, atualizar documentação/Postman e executar validação completa.
+6. Revisar logs, métricas operacionais e cenários de retry antes de publicar.
+
+## Pontos para fechar antes de implementar
+
+- Definir se haverá limite de quantidade de agendamentos pendentes por conta e horizonte máximo de agendamento.
+- Definir contrato de paginação e filtros (status/período), pois a listagem pode crescer indefinidamente.
+- Definir política e canal de notificação para falha de um agendamento: o job atual notifica transações com destinatário conhecido; falhas ocorridas antes da criação de uma transação não têm necessariamente transação notificável. Não assumir notificação garantida sem definir um evento/job dedicado.
+- Definir SLA/horário aproximado do processamento diário; a configuração recorrente atual demonstra Solid Queue, mas não fixa horário funcional para a feature.

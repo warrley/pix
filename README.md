@@ -20,7 +20,7 @@ POSTGRES_PASSWORD=postgres
 Make sure you have Docker installed. We use PostgreSQL 15, which will be automatically pulled and started by Docker. To start the database and backend, run:
 
 ```bash
-docker compose up
+docker compose up --build
 ```
 
 ### 3. Fixing Common Permission Errors (Linux Users)
