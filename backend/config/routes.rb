@@ -23,6 +23,8 @@ Rails.application.routes.draw do
         member do
           patch :block_fraud, to: "account_security#block_fraud"
           patch :unblock_fraud, to: "account_security#unblock_fraud"
+          get :limit, to: "account_limits#show"
+          patch :limit, to: "account_limits#update"
         end
         resources :pix_keys, only: [ :create, :index ]
         resources :transfers, only: [ :index ], controller: "account_transfers"

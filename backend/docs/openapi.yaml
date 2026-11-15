@@ -354,6 +354,48 @@ paths:
         '415':
           $ref: '#/components/responses/UnsupportedMediaType'
 
+  /api/v1/accounts/{id}/limit:
+    parameters:
+      - $ref: '#/components/parameters/AccountId'
+    get:
+      tags: [Accounts]
+      summary: Consulta o limite diário PIX da conta
+      operationId: getAccountDailyLimit
+      responses:
+        '200':
+          description: Limite diário e utilização atual
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountLimitResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Accounts]
+      summary: Atualiza o limite diário PIX da conta
+      operationId: updateAccountDailyLimit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountLimitRequest'
+            example:
+              daily_limit: '1250.50'
+      responses:
+        '200':
+          description: Limite diário atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountLimitResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+
   /api/v1/accounts/{account_id}/pix_keys:
     parameters:
       - $ref: '#/components/parameters/AccountIdPath'
@@ -820,13 +862,14 @@ components:
 
     Account:
       type: object
-      required: [id, user_id, account_number, agency_number, balance, status, fraud_blocked, created_at, updated_at]
+      required: [id, user_id, account_number, agency_number, balance, daily_limit, status, fraud_blocked, created_at, updated_at]
       properties:
         id: {type: integer, example: 1}
         user_id: {type: integer, example: 1}
         account_number: {type: string, example: '123456'}
         agency_number: {type: string, maxLength: 10, example: '0001'}
         balance: {$ref: '#/components/schemas/MoneyValue'}
+        daily_limit: {$ref: '#/components/schemas/MoneyValue'}
         status:
           type: string
           enum: [active, blocked, closed]
@@ -852,6 +895,23 @@ components:
       required: [reason]
       properties:
         reason: {type: string, minLength: 1, maxLength: 255}
+
+    AccountLimitRequest:
+      type: object
+      required: [daily_limit]
+      properties:
+        daily_limit:
+          type: string
+          pattern: '^\d+\.\d{2}$'
+          description: Limite não negativo em reais com duas casas decimais.
+
+    AccountLimit:
+      type: object
+      required: [daily_limit, used_today, remaining]
+      properties:
+        daily_limit: {$ref: '#/components/schemas/MoneyValue'}
+        used_today: {$ref: '#/components/schemas/MoneyValue'}
+        remaining: {$ref: '#/components/schemas/MoneyValue'}
 
     PixKey:
       type: object
@@ -1080,6 +1140,13 @@ components:
       required: [data, error]
       properties:
         data: {$ref: '#/components/schemas/Account'}
+        error: {type: 'null'}
+
+    AccountLimitResponse:
+      type: object
+      required: [data, error]
+      properties:
+        data: {$ref: '#/components/schemas/AccountLimit'}
         error: {type: 'null'}
 
     AccountListResponse:
