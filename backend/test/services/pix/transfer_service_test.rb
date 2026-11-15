@@ -84,17 +84,60 @@ class Pix::TransferServiceTest < ActiveSupport::TestCase
   end
 
   test "rejects transfers that exceed the configured daily limit" do
-    @source_account.update!(balance: 2_000.00)
+    @source_account.update!(balance: 6_000.00)
 
     result = Pix::TransferService.call(
       source_account_id: @source_account.id,
       pix_key: "receiver_svc@example.com",
-      amount_cents: 100_001
+      amount_cents: 500_001
     )
 
     assert_not result.success?
     assert_equal "transfer.daily_limit_exceeded", result.error.code
-    assert_equal 2_000.00, @source_account.reload.balance
+    assert_equal 6_000.00, @source_account.reload.balance
+  end
+
+  test "allows a transfer that reaches the daily limit exactly" do
+    @source_account.update!(balance: 6_000.00)
+
+    result = Pix::TransferService.call(
+      source_account_id: @source_account.id,
+      pix_key: "receiver_svc@example.com",
+      amount_cents: 500_000
+    )
+
+    assert result.success?
+    assert_equal 5_000.00, Pix::DailyTransferLimit.used_cents(account: @source_account.reload) / 100.0
+  end
+
+  test "ignores cancelled and failed transfers when calculating the daily limit" do
+    @source_account.update!(balance: 6_000.00)
+
+    Transaction.create!(
+      source_account: @source_account,
+      destination_account: @dest_account,
+      end_to_end_id: "E01011010#{SecureRandom.hex(6)}#{SecureRandom.alphanumeric(11).downcase}",
+      pix_key_used: @pix_key.key_value,
+      amount_cents: 4_000_00,
+      status: :cancelled,
+      cancelled_at: Time.current
+    )
+    Transaction.create!(
+      source_account: @source_account,
+      destination_account: @dest_account,
+      end_to_end_id: "E01011010#{SecureRandom.hex(6)}#{SecureRandom.alphanumeric(11).downcase}",
+      pix_key_used: @pix_key.key_value,
+      amount_cents: 4_000_00,
+      status: :failed
+    )
+
+    result = Pix::TransferService.call(
+      source_account_id: @source_account.id,
+      pix_key: "receiver_svc@example.com",
+      amount_cents: 5_000_00
+    )
+
+    assert result.success?
   end
 
   test "keeps a completed transfer when notification enqueueing fails" do
