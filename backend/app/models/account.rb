@@ -29,7 +29,10 @@ class Account < ApplicationRecord
   end
 
   def as_json(options = {})
-    super(options).except("balance_cents").merge("balance" => Pix::Money.format_cents(balance_cents))
+    super(options).except("balance_cents").merge(
+      "balance" => Pix::Money.format_cents(balance_cents),
+      "daily_limit" => Pix::Money.format_cents(Pix::DailyTransferLimit.limit_cents(account: self))
+    )
   end
 
   private
