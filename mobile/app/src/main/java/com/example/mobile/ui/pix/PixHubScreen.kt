@@ -63,6 +63,7 @@ fun PixHubScreen(
     onOpenQrScan: (startInPasteMode: Boolean) -> Unit,
     onOpenCharge: () -> Unit,
     onOpenPixKeys: () -> Unit,
+    onOpenDailyLimit: () -> Unit,
     onOpenUnderDevelopment: (String) -> Unit
 ) {
     var smartInput by remember { mutableStateOf("") }
@@ -216,7 +217,7 @@ fun PixHubScreen(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
                     .background(colors.surface)
-                    .clickable { onOpenUnderDevelopment("Configurar Pix") }
+                    .clickable(onClick = onOpenDailyLimit)
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween

@@ -29,6 +29,13 @@ fun parseAmountInput(raw: String): String? {
     return if (value.signum() > 0) value.toPlainString() else null
 }
 
+fun parseNonNegativeAmountInput(raw: String): String? {
+    val text = raw.trim()
+    if (!AMOUNT_INPUT.matches(text)) return null
+    val value = text.replace(',', '.').toBigDecimal().setScale(2)
+    return if (value.signum() >= 0) value.toPlainString() else null
+}
+
 /** Normalizes a phone number to E.164 for Brazil (+55DDXXXXXXXXX); blank stays blank. */
 fun normalizePhone(raw: String): String {
     val digits = raw.filter { it.isDigit() }

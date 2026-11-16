@@ -62,3 +62,15 @@ data class AccountCreateRequest(
 @Serializable
 data class AccountCreateBody(val account: AccountCreateRequest)
 
+@Serializable
+data class AccountLimitResponse(
+    @SerialName("daily_limit") val dailyLimit: String,
+    @SerialName("used_today") val usedToday: String,
+    val remaining: String
+)
+
+@Serializable
+data class AccountLimitUpdateRequest(
+    @SerialName("daily_limit") val dailyLimit: String
+)
+

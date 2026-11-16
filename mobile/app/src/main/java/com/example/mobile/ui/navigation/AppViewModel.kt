@@ -23,6 +23,7 @@ sealed interface Screen {
     data object Home : Screen
     data class PixHub(val accountId: Long, val balance: String) : Screen
     data class PixKeys(val accountId: Long) : Screen
+    data class DailyLimit(val accountId: Long) : Screen
     data class ScheduledTransfers(val accountId: Long, val balance: String) : Screen
     data class PixCharge(val accountId: Long) : Screen
     data class PixQrScan(

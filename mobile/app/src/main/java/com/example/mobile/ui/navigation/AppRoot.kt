@@ -10,6 +10,7 @@ import com.example.mobile.ui.components.UnderDevelopmentScreen
 import com.example.mobile.ui.history.TransactionHistoryScreen
 import com.example.mobile.ui.home.HomeScreen
 import com.example.mobile.ui.home.HomeViewModel
+import com.example.mobile.ui.pix.DailyLimitScreen
 import com.example.mobile.ui.pix.PixChargeScreen
 import com.example.mobile.ui.pix.PixHubScreen
 import com.example.mobile.ui.pix.PixKeysScreen
@@ -76,6 +77,9 @@ fun AppRoot(viewModel: AppViewModel = viewModel(factory = AppViewModel.Factory))
             onOpenPixKeys = {
                 viewModel.navigate(Screen.PixKeys(current.accountId))
             },
+            onOpenDailyLimit = {
+                viewModel.navigate(Screen.DailyLimit(current.accountId))
+            },
             onOpenUnderDevelopment = { feature ->
                 viewModel.navigate(Screen.UnderDevelopment(feature))
             }
@@ -106,6 +110,7 @@ fun AppRoot(viewModel: AppViewModel = viewModel(factory = AppViewModel.Factory))
             onBack = viewModel::back
         )
         is Screen.PixKeys -> PixKeysScreen(current.accountId, onBack = viewModel::back)
+        is Screen.DailyLimit -> DailyLimitScreen(current.accountId, onBack = viewModel::back)
         is Screen.ScheduledTransfers -> ScheduledTransfersScreen(
             accountId = current.accountId,
             accountBalance = current.balance,
