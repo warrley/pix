@@ -583,6 +583,77 @@ paths:
         '415':
           $ref: '#/components/responses/UnsupportedMediaType'
 
+  /api/v1/accounts/{account_id}/scheduled_transfers:
+    parameters:
+      - name: account_id
+        in: path
+        required: true
+        schema: {type: integer, minimum: 1}
+    get:
+      tags: [Transfers]
+      summary: Lista transferências agendadas da conta
+      operationId: listScheduledTransfers
+      responses:
+        '200':
+          description: Agendamentos da conta em ordem de execução
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ScheduledTransferListResponse'}
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [Transfers]
+      summary: Agenda uma transferência Pix
+      operationId: createScheduledTransfer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ScheduledTransferCreateBody'}
+            example:
+              scheduled_transfer:
+                pix_key: recebedor@example.com
+                amount: '50.00'
+                description: Pagamento agendado
+                scheduled_for: '2026-12-01'
+      responses:
+        '201':
+          description: Agendamento criado; o saldo será validado na execução
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ScheduledTransferResponse'}
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/v1/scheduled_transfers/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: integer, minimum: 1}
+    delete:
+      tags: [Transfers]
+      summary: Cancela um agendamento pendente
+      operationId: cancelScheduledTransfer
+      responses:
+        '200':
+          description: Agendamento cancelado
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ScheduledTransferResponse'}
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
   /api/v1/transfers/{id}:
     parameters:
       - name: id
@@ -695,6 +766,12 @@ components:
   responses:
     Unauthorized:
       description: Token ausente, inválido, expirado ou revogado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: Token sem escopo necessário
       content:
         application/json:
           schema:
@@ -1112,6 +1189,52 @@ components:
       required: [data, error]
       properties:
         data: {$ref: '#/components/schemas/TransferReceipt'}
+        error: {type: 'null'}
+
+    ScheduledTransfer:
+      type: object
+      required: [id, account_id, destination_account_id, pix_key_used, amount, scheduled_for, status, created_at, updated_at]
+      properties:
+        id: {type: integer}
+        account_id: {type: integer}
+        destination_account_id: {type: integer}
+        pix_key_used: {type: string, maxLength: 77}
+        amount: {$ref: '#/components/schemas/MoneyValue'}
+        description: {type: [string, 'null'], maxLength: 140}
+        scheduled_for: {type: string, format: date}
+        status: {type: string, enum: [pending, processing, executed, cancelled, failed]}
+        failure_reason: {type: [string, 'null'], maxLength: 255}
+        transaction_id: {type: [integer, 'null']}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+
+    ScheduledTransferCreateBody:
+      type: object
+      required: [scheduled_transfer]
+      properties:
+        scheduled_transfer:
+          type: object
+          required: [pix_key, amount, scheduled_for]
+          properties:
+            pix_key: {type: string, minLength: 1, maxLength: 77}
+            amount: {$ref: '#/components/schemas/MoneyValue'}
+            description: {type: string, maxLength: 140}
+            scheduled_for: {type: string, format: date, description: Data futura no fuso America/Sao_Paulo}
+
+    ScheduledTransferResponse:
+      type: object
+      required: [data, error]
+      properties:
+        data: {$ref: '#/components/schemas/ScheduledTransfer'}
+        error: {type: 'null'}
+
+    ScheduledTransferListResponse:
+      type: object
+      required: [data, error]
+      properties:
+        data:
+          type: array
+          items: {$ref: '#/components/schemas/ScheduledTransfer'}
         error: {type: 'null'}
 
     AccountTransfersResponse:

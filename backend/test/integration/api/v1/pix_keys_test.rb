@@ -94,4 +94,121 @@ class Api::V1::PixKeysTest < ActionDispatch::IntegrationTest
     assert_response :not_found
     assert_equal "Record not found", response.parsed_body["error"]
   end
+
+  test "PATCH /api/v1/pix_keys/:id/unblock reactivates suspended key and returns 200" do
+    suspended_key = PixKey.create!(
+      account: @account,
+      key_type: "email",
+      key_value: "suspended_api@example.com",
+      status: :suspended
+    )
+
+    patch unblock_api_v1_pix_key_path(id: suspended_key.id), as: :json
+
+    assert_response :ok
+    assert_equal "active", response.parsed_body.dig("data", "status")
+    assert_nil response.parsed_body["error"]
+    assert_equal "active", suspended_key.reload.status
+  end
+
+  test "PATCH /api/v1/pix_keys/:id/unblock returns 422 if key is active" do
+    patch unblock_api_v1_pix_key_path(id: @existing_key.id), as: :json
+
+    assert_response :unprocessable_entity
+    assert_not_nil response.parsed_body["error"]
+    assert_nil response.parsed_body["data"]
+  end
+
+  test "PATCH /api/v1/pix_keys/:id/unblock returns 422 if key is cancelled" do
+    @existing_key.cancelled!
+
+    patch unblock_api_v1_pix_key_path(id: @existing_key.id), as: :json
+
+    assert_response :unprocessable_entity
+    assert_not_nil response.parsed_body["error"]
+    assert_nil response.parsed_body["data"]
+  end
+
+  test "PATCH /api/v1/pix_keys/:id/unblock returns 422 if owning account is fraud-blocked" do
+    suspended_key = PixKey.create!(
+      account: @account,
+      key_type: "email",
+      key_value: "suspended_fraud_blocked_api@example.com",
+      status: :suspended
+    )
+    @account.update!(fraud_blocked: true)
+
+    patch unblock_api_v1_pix_key_path(id: suspended_key.id), as: :json
+
+    assert_response :unprocessable_entity
+    assert_not_nil response.parsed_body["error"]
+  end
+
+  test "PATCH /api/v1/pix_keys/:id/unblock returns 422 if owning account is blocked" do
+    suspended_key = PixKey.create!(
+      account: @account,
+      key_type: "email",
+      key_value: "suspended_blocked_api@example.com",
+      status: :suspended
+    )
+    @account.update!(status: "blocked")
+
+    patch unblock_api_v1_pix_key_path(id: suspended_key.id), as: :json
+
+    assert_response :unprocessable_entity
+    assert_not_nil response.parsed_body["error"]
+  end
+
+  test "PATCH /api/v1/pix_keys/:id/unblock returns 422 if owning account is closed" do
+    suspended_key = PixKey.create!(
+      account: @account,
+      key_type: "email",
+      key_value: "suspended_closed_api@example.com",
+      status: :suspended
+    )
+    @account.update!(status: "closed")
+
+    patch unblock_api_v1_pix_key_path(id: suspended_key.id), as: :json
+
+    assert_response :unprocessable_entity
+    assert_not_nil response.parsed_body["error"]
+  end
+
+  test "PATCH /api/v1/pix_keys/:id/unblock returns 422 if account exceeds 5 active keys" do
+    @account.pix_keys.destroy_all
+    5.times do |i|
+      PixKey.create!(account: @account, key_type: "email", key_value: "active_limit_#{i}@example.com", status: :active)
+    end
+    suspended_key = PixKey.create!(account: @account, key_type: "email", key_value: "sixth_suspended@example.com", status: :suspended)
+
+    patch unblock_api_v1_pix_key_path(id: suspended_key.id), as: :json
+
+    assert_response :unprocessable_entity
+    assert_not_nil response.parsed_body["error"]
+  end
+
+  test "PATCH /api/v1/pix_keys/:id/unblock returns 422 if active key duplicate exists" do
+    suspended_key = PixKey.create!(
+      account: @account,
+      key_type: "email",
+      key_value: "duplicate_candidate@example.com",
+      status: :suspended
+    )
+
+    other_user = User.create!(name: "Other", email: "other_dup@example.com", doc_id: "04252011000110")
+    other_acc = Account.create!(user: other_user, balance: 50.0, status: "active")
+    PixKey.create!(account: other_acc, key_type: "email", key_value: "duplicate_candidate@example.com", status: :active)
+
+    patch unblock_api_v1_pix_key_path(id: suspended_key.id), as: :json
+
+    assert_response :unprocessable_entity
+    assert_not_nil response.parsed_body["error"]
+  end
+
+  test "PATCH /api/v1/pix_keys/:id/unblock returns 404 for unknown key" do
+    patch unblock_api_v1_pix_key_path(id: 999_999), as: :json
+
+    assert_response :not_found
+    assert_equal "Record not found", response.parsed_body["error"]
+  end
 end

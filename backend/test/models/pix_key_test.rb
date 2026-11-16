@@ -83,4 +83,28 @@ class PixKeyTest < ActiveSupport::TestCase
     assert_not pix_key.valid?
     assert_includes pix_key.errors[:key_value].join, "must match account owner's CNPJ"
   end
+
+  test "unblock! successfully reactivates a suspended key" do
+    suspended_key = PixKey.create!(account: @account, key_type: "email", key_value: "suspended_model@example.com", status: :suspended)
+    assert suspended_key.unblock!
+    assert_equal "active", suspended_key.reload.status
+  end
+
+  test "unblock! raises error when key is not suspended" do
+    active_key = PixKey.create!(account: @account, key_type: "email", key_value: "active_model@example.com", status: :active)
+    err = assert_raises(StandardError) do
+      active_key.unblock!
+    end
+    assert_equal "Only suspended keys can be unblocked", err.message
+  end
+
+  test "unblock! raises error when owning account is blocked or inactive" do
+    suspended_key = PixKey.create!(account: @account, key_type: "email", key_value: "suspended_blocked@example.com", status: :suspended)
+    @account.update!(status: "blocked")
+
+    err = assert_raises(StandardError) do
+      suspended_key.unblock!
+    end
+    assert_equal "Account is fraud-blocked", err.message
+  end
 end

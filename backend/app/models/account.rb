@@ -11,6 +11,7 @@ class Account < ApplicationRecord
   has_many :pix_keys, dependent: :restrict_with_error
   has_many :sent_transactions, class_name: "Transaction", foreign_key: :source_account_id, dependent: :restrict_with_error
   has_many :received_transactions, class_name: "Transaction", foreign_key: :destination_account_id, dependent: :restrict_with_error
+  has_many :scheduled_transfers, dependent: :restrict_with_error
 
   before_validation :generate_account_number, on: :create
 
