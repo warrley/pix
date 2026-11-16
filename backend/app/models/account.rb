@@ -19,6 +19,7 @@ class Account < ApplicationRecord
   validates :account_number, presence: true, uniqueness: true
   validates :agency_number, presence: true, length: { maximum: 10 }
   validates :balance, numericality: { greater_than_or_equal_to: 0 }
+  validates :daily_limit, numericality: { greater_than_or_equal_to: 0 }
 
   def balance
     Pix::Money.decimal_from_cents(balance_cents)
@@ -29,7 +30,10 @@ class Account < ApplicationRecord
   end
 
   def as_json(options = {})
-    super(options).except("balance_cents").merge("balance" => Pix::Money.format_cents(balance_cents))
+    super(options).except("balance_cents").merge(
+      "balance" => Pix::Money.format_cents(balance_cents),
+      "daily_limit" => Pix::Money.format_cents(Pix::DailyTransferLimit.limit_cents(account: self))
+    )
   end
 
   private

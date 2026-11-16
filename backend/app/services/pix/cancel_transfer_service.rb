@@ -50,6 +50,8 @@ module Pix
             source_account: transaction.source_account,
             destination_account: transaction.destination_account,
             reason: @reason,
+            latitude: transaction.latitude,
+            longitude: transaction.longitude,
             created_at: Time.current
           )
         end

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_09_000000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_15_210300) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -25,10 +25,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_09_000000) do
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.bigint "balance_cents", default: 0, null: false
+    t.decimal "daily_limit", precision: 14, scale: 2, default: "5000.0", null: false
     t.index ["account_number"], name: "index_accounts_on_account_number", unique: true
     t.index ["fraud_blocked"], name: "index_accounts_on_fraud_blocked"
     t.index ["user_id"], name: "index_accounts_on_user_id"
     t.check_constraint "balance_cents >= 0", name: "accounts_balance_cents_non_negative"
+    t.check_constraint "daily_limit >= 0::numeric", name: "accounts_daily_limit_non_negative"
     t.check_constraint "status::text = ANY (ARRAY['active'::character varying::text, 'blocked'::character varying::text, 'closed'::character varying::text])", name: "accounts_status_valid"
   end
 
@@ -88,6 +90,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_09_000000) do
     t.datetime "created_at", null: false
     t.string "current_status", limit: 20, null: false
     t.bigint "destination_account_id", null: false
+    t.decimal "latitude", precision: 10, scale: 8
+    t.decimal "longitude", precision: 11, scale: 8
     t.string "previous_status", limit: 20
     t.string "reason", limit: 255
     t.bigint "source_account_id", null: false
@@ -96,6 +100,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_09_000000) do
     t.index ["destination_account_id"], name: "index_transaction_events_on_destination_account_id"
     t.index ["source_account_id"], name: "index_transaction_events_on_source_account_id"
     t.index ["transaction_id"], name: "index_transaction_events_on_transaction_id"
+    t.check_constraint "(latitude IS NULL AND longitude IS NULL) OR (latitude IS NOT NULL AND longitude IS NOT NULL)", name: "transaction_events_location_complete"
+    t.check_constraint "latitude IS NULL OR latitude BETWEEN '-90'::numeric AND 90::numeric", name: "transaction_events_latitude_valid"
+    t.check_constraint "longitude IS NULL OR longitude BETWEEN '-180'::numeric AND 180::numeric", name: "transaction_events_longitude_valid"
   end
 
   create_table "transactions", force: :cascade do |t|
@@ -105,6 +112,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_09_000000) do
     t.bigint "destination_account_id", null: false
     t.string "end_to_end_id", limit: 32, null: false
     t.string "failure_reason", limit: 255
+    t.decimal "latitude", precision: 10, scale: 8
+    t.decimal "longitude", precision: 11, scale: 8
     t.string "pix_key_used", limit: 77, null: false
     t.bigint "source_account_id", null: false
     t.string "status", limit: 20, default: "processing", null: false
@@ -117,6 +126,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_09_000000) do
     t.index ["source_account_id", "created_at"], name: "index_transactions_on_source_account_id_and_created_at"
     t.index ["source_account_id"], name: "index_transactions_on_source_account_id"
     t.check_constraint "amount_cents > 0", name: "transactions_amount_cents_positive"
+    t.check_constraint "(latitude IS NULL AND longitude IS NULL) OR (latitude IS NOT NULL AND longitude IS NOT NULL)", name: "transactions_location_complete"
+    t.check_constraint "latitude IS NULL OR latitude BETWEEN '-90'::numeric AND 90::numeric", name: "transactions_latitude_valid"
+    t.check_constraint "longitude IS NULL OR longitude BETWEEN '-180'::numeric AND 180::numeric", name: "transactions_longitude_valid"
     t.check_constraint "source_account_id <> destination_account_id", name: "transactions_no_self_transfer"
     t.check_constraint "status::text = ANY (ARRAY['processing'::character varying, 'completed'::character varying, 'failed'::character varying, 'cancelled'::character varying, 'refunded'::character varying]::text[])", name: "transactions_status_valid"
   end

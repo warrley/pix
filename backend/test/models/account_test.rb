@@ -1,6 +1,12 @@
 require "test_helper"
 
 class AccountTest < ActiveSupport::TestCase
+  test "defaults daily limit to 5000.00" do
+    account = Account.new(user: users(:one))
+
+    assert_equal 5_000.00, account.daily_limit
+  end
+
   setup do
     @user = User.create!(name: "Alice", email: "alice@example.com", doc_id: "52998224725")
   end

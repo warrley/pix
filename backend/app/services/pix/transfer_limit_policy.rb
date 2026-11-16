@@ -2,12 +2,7 @@ module Pix
   class TransferLimitPolicy
     NIGHT_START_HOUR = 20
     NIGHT_END_HOUR = 6
-    DEFAULT_DAILY_LIMIT_CENTS = 100_000
     DEFAULT_NIGHTLY_LIMIT_CENTS = 100_000
-
-    def self.daily_limit_cents
-      configured_limit("PIX_DAILY_TRANSFER_LIMIT_CENTS", DEFAULT_DAILY_LIMIT_CENTS)
-    end
 
     def self.nightly_limit_cents
       configured_limit("PIX_NIGHTLY_TRANSFER_LIMIT_CENTS", DEFAULT_NIGHTLY_LIMIT_CENTS)
@@ -38,8 +33,8 @@ module Pix
     private
 
     def daily_limit_exceeded?
-      used_cents = completed_transfers_since(@now.beginning_of_day)
-      used_cents + @amount_cents > self.class.daily_limit_cents
+      used_cents = DailyTransferLimit.used_cents(account: @source_account, now: @now)
+      used_cents + @amount_cents > DailyTransferLimit.limit_cents(account: @source_account)
     end
 
     def nightly_limit_exceeded?
@@ -66,7 +61,7 @@ module Pix
     end
 
     def daily_limit_error
-      DomainError.new(code: "transfer.daily_limit_exceeded", message: "Daily transfer limit exceeded", http_status: :unprocessable_entity)
+      DomainError.new(code: "transfer.daily_limit_exceeded", message: "Daily limit exceeded", http_status: :unprocessable_entity)
     end
 
     def nightly_limit_error
