@@ -38,6 +38,8 @@ class AuthViewModelTest {
         override suspend fun login(email: String, password: String): Result<UserResponse> {
             logins++; return loginResult
         }
+        override suspend fun updateProfile(name: String, email: String, phone: String?): Result<UserResponse> =
+            Result.success(user)
         override suspend fun logout() {}
         override fun acknowledgeExpiration() {}
     }

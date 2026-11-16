@@ -16,6 +16,7 @@ import com.example.mobile.ui.pix.PixHubScreen
 import com.example.mobile.ui.pix.PixKeysScreen
 import com.example.mobile.ui.pix.PixQrScanScreen
 import com.example.mobile.ui.pix.ScheduledTransfersScreen
+import com.example.mobile.ui.profile.EditProfileScreen
 import com.example.mobile.ui.summary.FinancialSummaryScreen
 import com.example.mobile.ui.transfer.TransferScreen
 
@@ -39,6 +40,9 @@ fun AppRoot(viewModel: AppViewModel = viewModel(factory = AppViewModel.Factory))
             },
             onOpenHistory = { accountId, balance ->
                 viewModel.navigate(Screen.TransactionHistory(accountId, balance))
+            },
+            onOpenEditProfile = {
+                viewModel.navigate(Screen.EditProfile)
             },
             onOpenSummary = { accountId ->
                 viewModel.navigate(Screen.FinancialSummary(accountId))
@@ -169,6 +173,7 @@ fun AppRoot(viewModel: AppViewModel = viewModel(factory = AppViewModel.Factory))
                 onBack = viewModel::back
             )
         }
+        Screen.EditProfile -> EditProfileScreen(onBack = viewModel::back)
         is Screen.UnderDevelopment -> UnderDevelopmentScreen(
             featureName = current.featureName,
             onBack = viewModel::back

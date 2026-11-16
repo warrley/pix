@@ -11,12 +11,15 @@ import com.example.mobile.model.StatementEntry
 import com.example.mobile.model.UserResponse
 import com.example.mobile.network.NotificationPreferences
 import com.example.mobile.network.NotificationPreferencesStore
+import com.example.mobile.network.ProfilePhotoStore
 import com.example.mobile.repository.AccountRepository
 import com.example.mobile.repository.AuthRepository
 import com.example.mobile.repository.TransferRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -26,6 +29,8 @@ data class HomeUiState(
     val selectedAccountId: Long? = null,
     val statement: List<StatementEntry> = emptyList(),
     val notificationPreferences: NotificationPreferences = NotificationPreferences(),
+    val photoPath: String? = null,
+    val photoVersion: Int = 0,
     val isLoading: Boolean = true,
     val isBusy: Boolean = false,
     val isBalanceVisible: Boolean = true,
@@ -40,7 +45,8 @@ class HomeViewModel(
     private val authRepository: AuthRepository,
     private val accountRepository: AccountRepository,
     private val transferRepository: TransferRepository,
-    private val notificationPreferencesStore: NotificationPreferencesStore? = null
+    private val notificationPreferencesStore: NotificationPreferencesStore? = null,
+    private val profilePhotoStore: ProfilePhotoStore? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(
@@ -48,15 +54,52 @@ class HomeViewModel(
             user = authRepository.session.value?.user,
             notificationPreferences = authRepository.session.value?.user?.id
                 ?.let { notificationPreferencesStore?.load(it) }
-                ?: NotificationPreferences()
+                ?: NotificationPreferences(),
+            photoPath = authRepository.session.value?.user?.id?.let { profilePhotoStore?.getPhotoPath(it) },
+            photoVersion = profilePhotoStore?.photoUpdates?.value ?: 0
         )
     )
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
+    init {
+        authRepository.session
+            .onEach { session ->
+                val user = session?.user
+                _uiState.update {
+                    it.copy(
+                        user = user,
+                        photoPath = user?.id?.let { id -> profilePhotoStore?.getPhotoPath(id) }
+                    )
+                }
+            }
+            .launchIn(viewModelScope)
+
+        profilePhotoStore?.photoUpdates
+            ?.onEach { version ->
+                val userId = _uiState.value.user?.id
+                _uiState.update {
+                    it.copy(
+                        photoPath = userId?.let { id -> profilePhotoStore.getPhotoPath(id) },
+                        photoVersion = version
+                    )
+                }
+            }
+            ?.launchIn(viewModelScope)
+    }
+
     fun refresh() {
         val user = authRepository.session.value?.user ?: return
         val prefs = notificationPreferencesStore?.load(user.id) ?: _uiState.value.notificationPreferences
-        _uiState.update { it.copy(user = user, notificationPreferences = prefs, isLoading = true, error = null) }
+        val photo = profilePhotoStore?.getPhotoPath(user.id)
+        _uiState.update {
+            it.copy(
+                user = user,
+                notificationPreferences = prefs,
+                photoPath = photo,
+                isLoading = true,
+                error = null
+            )
+        }
         viewModelScope.launch {
             accountRepository.getAccounts(user.id)
                 .onSuccess { accounts ->
@@ -149,7 +192,8 @@ class HomeViewModel(
                     authRepository = c.authRepository,
                     accountRepository = c.accountRepository,
                     transferRepository = c.transferRepository,
-                    notificationPreferencesStore = c.notificationPreferencesStore
+                    notificationPreferencesStore = c.notificationPreferencesStore,
+                    profilePhotoStore = c.profilePhotoStore
                 )
             }
         }

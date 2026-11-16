@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.AddCircleOutline
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.PersonOutline
 import androidx.compose.material.icons.filled.Pix
@@ -81,6 +82,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mobile.model.AccountResponse
 import com.example.mobile.ui.components.ErrorText
 import com.example.mobile.ui.components.LoadingBox
+import com.example.mobile.ui.components.ProfileAvatar
 import com.example.mobile.ui.components.RubyGemIcon
 import com.example.mobile.ui.theme.RuCoralRed
 import com.example.mobile.ui.theme.RuGreen
@@ -94,6 +96,7 @@ fun HomeScreen(
     onOpenPixHub: (Long, String) -> Unit,
     onOpenTransfer: (Long, String) -> Unit,
     onOpenHistory: (Long, String) -> Unit,
+    onOpenEditProfile: () -> Unit,
     onOpenSummary: (Long) -> Unit,
     onOpenUnderDevelopment: (String) -> Unit,
     viewModelKey: String,
@@ -141,6 +144,8 @@ fun HomeScreen(
                 // Original Nubank Header (Figma Tela 1 — leftmost original screen)
             HomeHeroHeader(
                 userName = state.user?.name?.substringBefore(' ').orEmpty(),
+                photoPath = state.photoPath,
+                photoVersion = state.photoVersion,
                 isBalanceVisible = state.isBalanceVisible,
                 onAvatarClick = { showProfileSheet = true },
                 onToggleBalance = viewModel::toggleBalanceVisibility,
@@ -270,21 +275,16 @@ fun HomeScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(52.dp)
-                            .clip(CircleShape)
-                            .background(colors.primary),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Default.PersonOutline,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
-                    Column {
+                    ProfileAvatar(
+                        photoPath = state.photoPath,
+                        photoVersion = state.photoVersion,
+                        size = 52.dp,
+                        iconSize = 28.dp,
+                        backgroundColor = colors.primary,
+                        iconTint = Color.White,
+                        contentDescription = null
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = state.user?.name ?: "Cliente RuBank",
                             color = colors.onSurface,
@@ -297,6 +297,36 @@ fun HomeScreen(
                             fontSize = 13.sp
                         )
                     }
+                    IconButton(
+                        onClick = {
+                            showProfileSheet = false
+                            onOpenEditProfile()
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Editar perfil",
+                            tint = colors.primary
+                        )
+                    }
+                }
+
+                OutlinedButton(
+                    onClick = {
+                        showProfileSheet = false
+                        onOpenEditProfile()
+                    },
+                    shape = RoundedCornerShape(50),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = null,
+                        tint = colors.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text("Editar perfil e foto", color = colors.primary, fontWeight = FontWeight.SemiBold)
                 }
 
                 HorizontalDivider(color = colors.outline)
@@ -465,6 +495,8 @@ fun HomeScreen(
 @Composable
 private fun HomeHeroHeader(
     userName: String,
+    photoPath: String?,
+    photoVersion: Int,
     isBalanceVisible: Boolean,
     onAvatarClick: () -> Unit,
     onToggleBalance: () -> Unit,
@@ -494,20 +526,15 @@ private fun HomeHeroHeader(
             Box(
                 modifier = Modifier.clickable(onClick = onAvatarClick)
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(46.dp)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.18f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Default.PersonOutline,
-                        contentDescription = "Perfil e contas",
-                        tint = Color.White,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
+                ProfileAvatar(
+                    photoPath = photoPath,
+                    photoVersion = photoVersion,
+                    size = 46.dp,
+                    iconSize = 24.dp,
+                    backgroundColor = Color.White.copy(alpha = 0.18f),
+                    iconTint = Color.White,
+                    contentDescription = "Perfil e contas"
+                )
                 Box(
                     modifier = Modifier
                         .size(10.dp)

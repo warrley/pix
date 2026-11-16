@@ -11,7 +11,9 @@ import com.example.mobile.network.KtorPixKeyRemoteDataSource
 import com.example.mobile.network.KtorScheduledTransferRemoteDataSource
 import com.example.mobile.network.KtorTransferRemoteDataSource
 import com.example.mobile.network.KtorUserRemoteDataSource
+import com.example.mobile.network.LocalProfilePhotoStore
 import com.example.mobile.network.NotificationPreferencesStore
+import com.example.mobile.network.ProfilePhotoStore
 import com.example.mobile.network.RecentPixContactsStore
 import com.example.mobile.network.SessionStore
 import com.example.mobile.network.SharedPreferencesNotificationPreferencesStore
@@ -38,12 +40,17 @@ class AppContainer(context: Context) {
     val notificationPreferencesStore: NotificationPreferencesStore by lazy {
         SharedPreferencesNotificationPreferencesStore(context)
     }
+    val profilePhotoStore: ProfilePhotoStore by lazy {
+        LocalProfilePhotoStore(context)
+    }
+
+    private val userRemoteDataSource by lazy { KtorUserRemoteDataSource(client) }
 
     val authRepository: AuthRepository by lazy {
-        DefaultAuthRepository(KtorAuthRemoteDataSource(client), sessionStore)
+        DefaultAuthRepository(KtorAuthRemoteDataSource(client), sessionStore, userRemoteDataSource)
     }
     val accountRepository: AccountRepository by lazy {
-        DefaultAccountRepository(KtorAccountRemoteDataSource(client), KtorUserRemoteDataSource(client))
+        DefaultAccountRepository(KtorAccountRemoteDataSource(client), userRemoteDataSource)
     }
     val pixKeyRepository: PixKeyRepository by lazy {
         DefaultPixKeyRepository(KtorPixKeyRemoteDataSource(client))

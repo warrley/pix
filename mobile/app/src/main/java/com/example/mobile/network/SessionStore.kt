@@ -26,6 +26,11 @@ class SessionStore {
         _session.value = session
     }
 
+    fun updateUser(user: UserResponse) {
+        val current = _session.value ?: return
+        _session.value = current.copy(user = user)
+    }
+
     fun end(expired: Boolean = false) {
         _expired.value = expired
         _session.value = null

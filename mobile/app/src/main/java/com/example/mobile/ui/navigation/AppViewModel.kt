@@ -42,6 +42,7 @@ sealed interface Screen {
     ) : Screen
     data class FinancialSummary(val accountId: Long) : Screen
     data class TransactionHistory(val accountId: Long, val balance: String) : Screen
+    data object EditProfile : Screen
     data class UnderDevelopment(val featureName: String) : Screen
 }
 

@@ -13,6 +13,16 @@ data class UserResponse(
 )
 
 @Serializable
+data class UserUpdateRequest(
+    val name: String,
+    val email: String,
+    val phone: String? = null
+)
+
+@Serializable
+data class UserUpdateBody(val user: UserUpdateRequest)
+
+@Serializable
 data class SignUpRequest(
     val name: String,
     val email: String,

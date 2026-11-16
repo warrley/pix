@@ -37,6 +37,8 @@ class HomeViewModelTest {
         override suspend fun login(email: String, password: String) = Result.success(flow.value!!.user)
         override suspend fun signUp(request: SignUpRequest) =
             Result.success(flow.value!!.user)
+        override suspend fun updateProfile(name: String, email: String, phone: String?) =
+            Result.success(flow.value!!.user)
         override suspend fun logout() {}
         override fun acknowledgeExpiration() {}
     }
