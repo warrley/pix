@@ -38,9 +38,16 @@ sudo chmod 644 backend/config/master.key
 
 ### 4. Verify it's working!
 Open your browser and navigate to the health check endpoint:
-👉 [http://localhost/up](http://localhost/up)
+👉 [http://localhost:3000/up](http://localhost:3000/up)
 
 If you see a green screen with the Rails logo, your local setup is perfect!
+
+### 5. Observability (Prometheus + Grafana)
+Set `METRICS_BEARER_TOKEN`, `GRAFANA_ADMIN_USER`, and `GRAFANA_ADMIN_PASSWORD` in your ignored `.env` file before starting the containers with `docker compose up`:
+- **API Metrics Endpoint (`/metrics`)**: `http://localhost:3000/metrics` (protected by `Authorization: Bearer <METRICS_BEARER_TOKEN>`).
+- **Prometheus**: [http://127.0.0.1:9090](http://127.0.0.1:9090) (bound to loopback by default).
+- **Grafana**: [http://127.0.0.1:3001](http://127.0.0.1:3001) (authenticated with `GRAFANA_ADMIN_USER` / `GRAFANA_ADMIN_PASSWORD` from `.env` — pre-provisioned with the Prometheus datasource and the **PIX — Observabilidade Completa** dashboard under `ops/grafana/`).
+- **PostgreSQL Exporter**: `http://127.0.0.1:9187/metrics`
 
 ## Contributing
 Check the `CONTRIBUTING.md` file for our team rules before pushing code.

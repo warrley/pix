@@ -38,9 +38,16 @@ sudo chmod 644 backend/config/master.key
 
 ### 4. Verifique se está funcionando!
 Abra seu navegador e acesse o endpoint de verificação de saúde (health check):
-👉 [http://localhost/up](http://localhost/up)
+👉 [http://localhost:3000/up](http://localhost:3000/up)
 
 Se você vir uma tela verde com a logo do Rails, sua configuração local está perfeita!
+
+### 5. Observabilidade (Prometheus + Grafana)
+Defina `METRICS_BEARER_TOKEN`, `GRAFANA_ADMIN_USER` e `GRAFANA_ADMIN_PASSWORD` no seu arquivo `.env` local (ignorado pelo Git) antes de subir os containers com `docker compose up`:
+- **Endpoint de Métricas da API (`/metrics`)**: `http://localhost:3000/metrics` (protegido via header `Authorization: Bearer <METRICS_BEARER_TOKEN>`).
+- **Prometheus**: [http://127.0.0.1:9090](http://127.0.0.1:9090) (publicado apenas em loopback por padrão).
+- **Grafana**: [http://127.0.0.1:3001](http://127.0.0.1:3001) (autenticado com `GRAFANA_ADMIN_USER` / `GRAFANA_ADMIN_PASSWORD` definidos no `.env` — já vem com o datasource Prometheus e o dashboard **PIX — Observabilidade Completa** pré-provisionados em `ops/grafana/`).
+- **PostgreSQL Exporter**: `http://127.0.0.1:9187/metrics`
 
 ## Contribuindo
 Consulte o arquivo `CONTRIBUTING.pt-BR.md` (ou `CONTRIBUTING.md`) para conhecer as regras da nossa equipe antes de enviar código.
