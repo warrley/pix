@@ -1,0 +1,356 @@
+package com.example.mobile.ui.pix
+
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.widget.Toast
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.mobile.ui.components.ErrorText
+import com.example.mobile.ui.components.FormField
+import com.example.mobile.ui.components.PixScaffold
+import com.example.mobile.ui.components.ScreenColumn
+import com.example.mobile.ui.theme.RuCoralRed
+
+private fun copyToClipboard(context: Context, keyValue: String) {
+    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    clipboard.setPrimaryClip(ClipData.newPlainText("Chave Pix", keyValue))
+    Toast.makeText(context, "Chave Pix copiada: $keyValue", Toast.LENGTH_SHORT).show()
+}
+
+private fun PixKeyType.icon(): ImageVector = when (this) {
+    PixKeyType.CPF, PixKeyType.CNPJ -> Icons.Default.Person
+    PixKeyType.EMAIL -> Icons.Default.Email
+    PixKeyType.PHONE -> Icons.Default.Phone
+    PixKeyType.RANDOM -> Icons.Default.Shield
+}
+
+/**
+ * Nubank-style "Minhas chaves" screen:
+ * - Title: "Minhas chaves"
+ * - Subtitle: "Gerencie suas chaves para receber transferências pelo Pix."
+ * - "Registrar chave   +" row that opens a ModalBottomSheet from the bottom with the key types.
+ * - List of registered active keys (tap to copy to clipboard, trash icon to remove).
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PixKeysScreen(accountId: Long, onBack: () -> Unit) {
+    val viewModel: PixKeysViewModel = viewModel(
+        key = "pix-keys-$accountId",
+        factory = PixKeysViewModel.factory(accountId)
+    )
+    val state by viewModel.uiState.collectAsState()
+    val colors = MaterialTheme.colorScheme
+    val context = LocalContext.current
+
+    var showTypeSheet by remember { mutableStateOf(false) }
+    var showValueInputInSheet by remember { mutableStateOf(false) }
+
+    PixScaffold(title = "", onBack = onBack) { padding ->
+        ScreenColumn(padding) {
+            Text(
+                text = "Minhas chaves",
+                color = colors.onBackground,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.ExtraBold
+            )
+
+            Text(
+                text = "Gerencie suas chaves para receber transferências pelo Pix.",
+                color = colors.onSurfaceVariant,
+                fontSize = 15.sp,
+                lineHeight = 20.sp
+            )
+
+            // "Registrar chave   +" action row (opens ModalBottomSheet from bottom)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(colors.surface)
+                    .clickable {
+                        showValueInputInSheet = false
+                        showTypeSheet = true
+                    }
+                    .padding(horizontal = 18.dp, vertical = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Registrar chave",
+                    color = colors.primary,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Registrar chave",
+                    tint = colors.primary
+                )
+            }
+
+            ErrorText(state.error)
+
+            HorizontalDivider(color = colors.outline)
+
+            Text(
+                text = "${state.keys.size} de 5 chaves",
+                style = MaterialTheme.typography.labelLarge,
+                color = colors.onSurfaceVariant,
+                fontWeight = FontWeight.SemiBold
+            )
+
+            if (!state.isLoading && state.keys.isEmpty()) {
+                Text(
+                    text = "Você ainda não tem chaves registradas nesta conta. Toque em \"Registrar chave +\" acima para criar uma.",
+                    color = colors.onSurfaceVariant,
+                    fontSize = 14.sp
+                )
+            }
+
+            state.keys.forEach { key ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { copyToClipboard(context, key.keyValue) },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = colors.surface)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(colors.primaryContainer),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Default.Key,
+                                    contentDescription = null,
+                                    tint = colors.onPrimaryContainer,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            Column {
+                                Text(
+                                    text = key.keyType.uppercase(),
+                                    color = colors.onSurface,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = key.keyValue,
+                                    color = colors.onSurfaceVariant,
+                                    fontSize = 13.sp
+                                )
+                            }
+                        }
+                        Row {
+                            IconButton(onClick = { copyToClipboard(context, key.keyValue) }) {
+                                Icon(
+                                    Icons.Default.ContentCopy,
+                                    contentDescription = "Copiar chave",
+                                    tint = colors.primary
+                                )
+                            }
+                            IconButton(onClick = { viewModel.delete(key) }) {
+                                Icon(
+                                    Icons.Default.DeleteOutline,
+                                    contentDescription = "Remover chave",
+                                    tint = RuCoralRed
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Bottom Sheet coming from the bottom when "Registrar chave +" is tapped
+    if (showTypeSheet) {
+        ModalBottomSheet(
+            onDismissRequest = {
+                showTypeSheet = false
+                showValueInputInSheet = false
+            },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = colors.surface
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                if (!showValueInputInSheet) {
+                    Text(
+                        text = "Registrar chave",
+                        color = colors.onSurface,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                    Text(
+                        text = "Escolha o tipo de chave que você quer registrar nesta conta:",
+                        color = colors.onSurfaceVariant,
+                        fontSize = 14.sp
+                    )
+
+                    Spacer(Modifier.height(4.dp))
+
+                    PixKeyType.entries.forEach { type ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(14.dp))
+                                .clickable {
+                                    viewModel.onTypeChange(type)
+                                    if (type.needsValue) {
+                                        showValueInputInSheet = true
+                                    } else {
+                                        viewModel.create()
+                                        showTypeSheet = false
+                                    }
+                                }
+                                .padding(vertical = 14.dp, horizontal = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(14.dp)
+                            ) {
+                                Icon(
+                                    imageVector = type.icon(),
+                                    contentDescription = null,
+                                    tint = colors.onSurface
+                                )
+                                Text(
+                                    text = type.label,
+                                    color = colors.onSurface,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = null,
+                                tint = colors.onSurfaceVariant
+                            )
+                        }
+                        HorizontalDivider(color = colors.outline)
+                    }
+                    Spacer(Modifier.height(16.dp))
+                } else {
+                    Text(
+                        text = "Registrar ${state.type.label}",
+                        color = colors.onSurface,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                    FormField(
+                        value = state.value,
+                        onValueChange = viewModel::onValueChange,
+                        label = state.type.label,
+                        enabled = !state.isBusy
+                    )
+                    ErrorText(state.error)
+
+                    Button(
+                        onClick = {
+                            if (state.value.isNotBlank()) {
+                                viewModel.create()
+                                showTypeSheet = false
+                                showValueInputInSheet = false
+                            } else {
+                                viewModel.create()
+                            }
+                        },
+                        enabled = !state.isBusy,
+                        shape = RoundedCornerShape(50),
+                        colors = ButtonDefaults.buttonColors(containerColor = colors.primary),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                    ) {
+                        Text(
+                            text = if (state.isBusy) "Registrando…" else "Confirmar e registrar",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    TextButton(
+                        onClick = { showValueInputInSheet = false },
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    ) {
+                        Text("Voltar aos tipos de chave", color = colors.onSurfaceVariant)
+                    }
+                    Spacer(Modifier.height(16.dp))
+                }
+            }
+        }
+    }
+}

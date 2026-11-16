@@ -11,6 +11,7 @@ Rails.application.routes.draw do
   namespace :api do
     namespace :v1 do
       post "auth/token", to: "auth#create", as: :auth_token
+      post "auth/signup", to: "auth#signup", as: :auth_signup
       delete "auth/token", to: "auth#destroy"
       resources :users, only: [ :create, :show, :update, :destroy ] do
         resources :accounts, only: [ :index ]
@@ -28,7 +29,11 @@ Rails.application.routes.draw do
         resources :transfers, only: [ :index ], controller: "account_transfers"
         get "reports/statement", to: "account_reports#statement"
       end
-      resources :pix_keys, only: [ :destroy ]
+      resources :pix_keys, only: [ :destroy ] do
+        collection do
+          get :lookup
+        end
+      end
       resources :transfers, only: [ :create, :show ] do
         member do
           post :cancel

@@ -1,3 +1,5 @@
+require_relative "domain_error"
+
 module Pix
   class TransferService
     DEFAULT_ISPB = "01011010"
@@ -117,6 +119,10 @@ module Pix
 
       if @source_account.id == @destination_account.id
         return DomainError.new(code: "transfer.self_transfer", message: "Self-transfers are not allowed", http_status: :unprocessable_entity)
+      end
+
+      if @source_account.user_id == @destination_account.user_id
+        return DomainError.new(code: "transfer.self_user_transfer", message: "Você não pode transferir para uma chave Pix do próprio usuário.", http_status: :unprocessable_entity)
       end
 
       if @source_account.balance_cents < @amount_cents
