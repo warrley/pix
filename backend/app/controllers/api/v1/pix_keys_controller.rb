@@ -2,11 +2,11 @@ module Api
   module V1
     class PixKeysController < ApplicationController
       before_action :set_account, only: [ :create, :index ]
-      before_action :set_pix_key, only: [ :destroy, :unblock ]
-      before_action -> { require_api_scope!("pix_keys:write") }, only: [ :create, :destroy, :unblock ]
+      before_action :set_pix_key, only: [ :destroy, :suspend, :unblock, :reassociate ]
+      before_action -> { require_api_scope!("pix_keys:write") }, only: [ :create, :destroy, :suspend, :unblock, :reassociate ]
       before_action -> { require_api_scope!("pix_keys:read") }, only: [ :index, :lookup ]
       before_action -> { authorize_account!(@account) }, only: [ :create, :index ]
-      before_action -> { authorize_account!(@pix_key.account) }, only: [ :destroy, :unblock ]
+      before_action -> { authorize_account!(@pix_key.account) }, only: [ :destroy, :suspend, :unblock, :reassociate ]
 
       def lookup
         raw_key = params[:key].to_s.strip
@@ -52,8 +52,8 @@ module Api
       end
 
       def index
-        active_keys = @account.pix_keys.where(status: "active")
-        render_success(active_keys)
+        keys = @account.pix_keys.where(status: %w[active suspended]).order(:id)
+        render_success(keys)
       end
 
       def destroy
@@ -64,8 +64,29 @@ module Api
         end
       end
 
+      def suspend
+        result = Pix::KeyLifecycleService.suspend(@pix_key)
+
+        if result.success?
+          render_success(result.pix_key)
+        else
+          render_error(result.error)
+        end
+      end
+
       def unblock
         result = Pix::KeyLifecycleService.unblock(@pix_key)
+
+        if result.success?
+          render_success(result.pix_key)
+        else
+          render_error(result.error)
+        end
+      end
+
+      def reassociate
+        target_account = Account.find(reassociate_account_id)
+        result = Pix::KeyLifecycleService.reassociate(@pix_key, target_account)
 
         if result.success?
           render_success(result.pix_key)
@@ -86,6 +107,10 @@ module Api
 
       def pix_key_params
         params.require(:pix_key).permit(:key_type, :key_value)
+      end
+
+      def reassociate_account_id
+        params[:account_id].presence || params.dig(:pix_key, :account_id)
       end
 
       def normalize_lookup_key(value)

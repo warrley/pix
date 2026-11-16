@@ -107,4 +107,18 @@ class PixKeyTest < ActiveSupport::TestCase
     end
     assert_equal "Account is fraud-blocked", err.message
   end
+
+  test "suspend! suspends an active key" do
+    active_key = PixKey.create!(account: @account, key_type: "email", key_value: "suspend_model@example.com", status: :active)
+    assert active_key.suspend!
+    assert_equal "suspended", active_key.reload.status
+  end
+
+  test "reassociate_to! moves an active key to another active account of the same user" do
+    target_account = Account.create!(user: @user, balance: 50.0, status: "active")
+    active_key = PixKey.create!(account: @account, key_type: "email", key_value: "reassoc_model@example.com", status: :active)
+
+    assert active_key.reassociate_to!(target_account)
+    assert_equal target_account.id, active_key.reload.account_id
+  end
 end

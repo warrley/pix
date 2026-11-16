@@ -30,8 +30,28 @@ class PixKey < ApplicationRecord
   validate :tax_id_key_must_match_account_owner
   validate :account_must_be_active, on: :create
 
+  def suspend!
+    result = Pix::KeyLifecycleService.suspend(self)
+    unless result.success?
+      errors.add(:base, result.error)
+      raise Pix::KeyLifecycleService::Error, result.error
+    end
+
+    self
+  end
+
   def unblock!
     result = Pix::KeyLifecycleService.unblock(self)
+    unless result.success?
+      errors.add(:base, result.error)
+      raise Pix::KeyLifecycleService::Error, result.error
+    end
+
+    self
+  end
+
+  def reassociate_to!(new_account)
+    result = Pix::KeyLifecycleService.reassociate(self, new_account)
     unless result.success?
       errors.add(:base, result.error)
       raise Pix::KeyLifecycleService::Error, result.error

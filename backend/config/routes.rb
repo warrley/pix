@@ -37,7 +37,9 @@ Rails.application.routes.draw do
           get :lookup
         end
         member do
+          patch :suspend
           patch :unblock
+          patch :reassociate
         end
       end
       resources :transfers, only: [ :create, :show ] do

@@ -151,4 +151,40 @@ class Pix::KeyLifecycleServiceTest < ActiveSupport::TestCase
     assert_equal @suspended_key.id, unblocked.id
     assert_equal "active", unblocked.reload.status
   end
+
+  test "successfully suspends an active key and rejects already suspended or cancelled keys" do
+    active_key = PixKey.create!(account: @account, key_type: "email", key_value: "active_suspend@example.com", status: :active)
+
+    result = Pix::KeyLifecycleService.suspend(active_key)
+    assert result.success?
+    assert_equal "suspended", active_key.reload.status
+
+    again = Pix::KeyLifecycleService.suspend(active_key)
+    assert_not again.success?
+    assert_equal "Only active keys can be suspended", again.error
+  end
+
+  test "reassociates an active key to another active account of the same user" do
+    target_account = Account.create!(user: @user, balance: 100.0, status: "active")
+    active_key = PixKey.create!(account: @account, key_type: "email", key_value: "move_svc@example.com", status: :active)
+
+    result = Pix::KeyLifecycleService.reassociate(active_key, target_account)
+
+    assert result.success?
+    assert_equal target_account.id, active_key.reload.account_id
+  end
+
+  test "fails to reassociate a suspended key or to another user account" do
+    target_account = Account.create!(user: @user, balance: 100.0, status: "active")
+    res1 = Pix::KeyLifecycleService.reassociate(@suspended_key, target_account)
+    assert_not res1.success?
+    assert_equal "Only active keys can be moved", res1.error
+
+    other_user = User.create!(name: "Other User 3", email: "other3@example.com", doc_id: "04252011000110")
+    other_account = Account.create!(user: other_user, balance: 100.0, status: "active")
+    active_key = PixKey.create!(account: @account, key_type: "email", key_value: "move_other_user@example.com", status: :active)
+    res2 = Pix::KeyLifecycleService.reassociate(active_key, other_account)
+    assert_not res2.success?
+    assert_equal "New account must belong to the same user", res2.error
+  end
 end
