@@ -109,7 +109,18 @@ fun AppRoot(viewModel: AppViewModel = viewModel(factory = AppViewModel.Factory))
             },
             onBack = viewModel::back
         )
-        is Screen.PixKeys -> PixKeysScreen(current.accountId, onBack = viewModel::back)
+        is Screen.PixKeys -> {
+            val homeViewModel: HomeViewModel = viewModel(
+                key = "home-$userId",
+                factory = HomeViewModel.Factory
+            )
+            val homeState by homeViewModel.uiState.collectAsState()
+            PixKeysScreen(
+                accountId = current.accountId,
+                otherAccounts = homeState.accounts.filter { it.id != current.accountId },
+                onBack = viewModel::back
+            )
+        }
         is Screen.DailyLimit -> DailyLimitScreen(current.accountId, onBack = viewModel::back)
         is Screen.ScheduledTransfers -> ScheduledTransfersScreen(
             accountId = current.accountId,

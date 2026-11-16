@@ -29,6 +29,12 @@ class PixQrScanViewModelTest {
         override suspend fun createKey(accountId: Long, keyType: String, keyValue: String?): Result<PixKeyResponse> =
             Result.failure(UnsupportedOperationException())
         override suspend fun deleteKey(id: Long): Result<Unit> = Result.success(Unit)
+        override suspend fun suspendKey(id: Long): Result<PixKeyResponse> =
+            Result.failure(UnsupportedOperationException())
+        override suspend fun unblockKey(id: Long): Result<PixKeyResponse> =
+            Result.failure(UnsupportedOperationException())
+        override suspend fun reassociateKey(id: Long, targetAccountId: Long): Result<PixKeyResponse> =
+            Result.failure(UnsupportedOperationException())
         override suspend fun lookupKey(key: String, sourceAccountId: Long): Result<PixKeyLookupResponse> {
             lookedUpKeys += key
             return lookupResult

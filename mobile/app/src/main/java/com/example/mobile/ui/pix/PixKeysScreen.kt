@@ -19,14 +19,19 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.PauseCircleOutline
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -57,11 +62,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.mobile.model.AccountResponse
+import com.example.mobile.model.PixKeyResponse
 import com.example.mobile.ui.components.ErrorText
 import com.example.mobile.ui.components.FormField
 import com.example.mobile.ui.components.PixScaffold
 import com.example.mobile.ui.components.ScreenColumn
 import com.example.mobile.ui.theme.RuCoralRed
+import com.example.mobile.ui.theme.RuGreen
+import com.example.mobile.ui.theme.RuWarning
 
 private fun copyToClipboard(context: Context, keyValue: String) {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -85,7 +94,11 @@ private fun PixKeyType.icon(): ImageVector = when (this) {
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PixKeysScreen(accountId: Long, onBack: () -> Unit) {
+fun PixKeysScreen(
+    accountId: Long,
+    otherAccounts: List<AccountResponse> = emptyList(),
+    onBack: () -> Unit
+) {
     val viewModel: PixKeysViewModel = viewModel(
         key = "pix-keys-$accountId",
         factory = PixKeysViewModel.factory(accountId)
@@ -96,6 +109,8 @@ fun PixKeysScreen(accountId: Long, onBack: () -> Unit) {
 
     var showTypeSheet by remember { mutableStateOf(false) }
     var showValueInputInSheet by remember { mutableStateOf(false) }
+    var managingKey by remember { mutableStateOf<PixKeyResponse?>(null) }
+    var showReassociateList by remember { mutableStateOf(false) }
 
     PixScaffold(title = "", onBack = onBack) { padding ->
         ScreenColumn(padding) {
@@ -140,6 +155,9 @@ fun PixKeysScreen(accountId: Long, onBack: () -> Unit) {
                 )
             }
 
+            state.message?.let {
+                Text(it, color = RuGreen, style = MaterialTheme.typography.bodyMedium)
+            }
             ErrorText(state.error)
 
             HorizontalDivider(color = colors.outline)
@@ -194,12 +212,32 @@ fun PixKeysScreen(accountId: Long, onBack: () -> Unit) {
                                 )
                             }
                             Column {
-                                Text(
-                                    text = key.keyType.uppercase(),
-                                    color = colors.onSurface,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text(
+                                        text = key.keyType.uppercase(),
+                                        color = colors.onSurface,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    val isSuspended = key.status == "suspended"
+                                    val badgeColor = if (isSuspended) RuWarning else RuGreen
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(50))
+                                            .background(badgeColor.copy(alpha = 0.14f))
+                                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                                    ) {
+                                        Text(
+                                            text = if (isSuspended) "Suspensa" else "Ativa",
+                                            color = badgeColor,
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
                                 Text(
                                     text = key.keyValue,
                                     color = colors.onSurfaceVariant,
@@ -215,11 +253,16 @@ fun PixKeysScreen(accountId: Long, onBack: () -> Unit) {
                                     tint = colors.primary
                                 )
                             }
-                            IconButton(onClick = { viewModel.delete(key) }) {
+                            IconButton(
+                                onClick = {
+                                    managingKey = key
+                                    showReassociateList = false
+                                }
+                            ) {
                                 Icon(
-                                    Icons.Default.DeleteOutline,
-                                    contentDescription = "Remover chave",
-                                    tint = RuCoralRed
+                                    Icons.Default.MoreVert,
+                                    contentDescription = "Gerenciar chave",
+                                    tint = colors.onSurfaceVariant
                                 )
                             }
                         }
@@ -352,5 +395,154 @@ fun PixKeysScreen(accountId: Long, onBack: () -> Unit) {
                 }
             }
         }
+    }
+
+    managingKey?.let { key ->
+        val activeOtherAccounts = otherAccounts.filter { it.isActive && it.id != accountId }
+        ModalBottomSheet(
+            onDismissRequest = {
+                managingKey = null
+                showReassociateList = false
+            },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = colors.surface
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text(
+                    text = if (showReassociateList) "Trocar conta associada" else "Gerenciar chave Pix",
+                    color = colors.onSurface,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.ExtraBold
+                )
+                Text(
+                    text = "${key.keyType.uppercase()} • ${key.keyValue}",
+                    color = colors.onSurfaceVariant,
+                    fontSize = 13.sp
+                )
+                HorizontalDivider(color = colors.outline)
+
+                if (!showReassociateList) {
+                    KeyActionRow(
+                        icon = Icons.Default.ContentCopy,
+                        label = "Copiar chave",
+                        tint = colors.onSurface,
+                        onClick = {
+                            copyToClipboard(context, key.keyValue)
+                            managingKey = null
+                        }
+                    )
+
+                    if (key.status == "active") {
+                        KeyActionRow(
+                            icon = Icons.Default.PauseCircleOutline,
+                            label = "Suspender chave",
+                            tint = RuWarning,
+                            onClick = {
+                                managingKey = null
+                                viewModel.suspend(key)
+                            }
+                        )
+                    } else if (key.status == "suspended") {
+                        KeyActionRow(
+                            icon = Icons.Default.CheckCircle,
+                            label = "Desuspender / reativar chave",
+                            tint = RuGreen,
+                            onClick = {
+                                managingKey = null
+                                viewModel.unblock(key)
+                            }
+                        )
+                    }
+
+                    if (key.status == "active" && activeOtherAccounts.isNotEmpty()) {
+                        KeyActionRow(
+                            icon = Icons.Default.SwapHoriz,
+                            label = "Trocar conta associada",
+                            tint = colors.primary,
+                            onClick = { showReassociateList = true }
+                        )
+                    }
+
+                    KeyActionRow(
+                        icon = Icons.Default.DeleteOutline,
+                        label = "Excluir chave",
+                        tint = RuCoralRed,
+                        onClick = {
+                            managingKey = null
+                            viewModel.delete(key)
+                        }
+                    )
+                } else {
+                    Text(
+                        text = "Escolha a nova conta de destino para esta chave:",
+                        color = colors.onSurfaceVariant,
+                        fontSize = 13.sp
+                    )
+                    activeOtherAccounts.forEach { acc ->
+                        val label = "Ag. ${acc.agencyNumber} • Conta ${acc.accountNumber}"
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(colors.background)
+                                .clickable {
+                                    managingKey = null
+                                    showReassociateList = false
+                                    viewModel.reassociate(key, acc.id, label)
+                                }
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(Icons.Default.AccountBalance, contentDescription = null, tint = colors.primary)
+                            Text(
+                                text = label,
+                                color = colors.onBackground,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
+                    TextButton(
+                        onClick = { showReassociateList = false },
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    ) {
+                        Text("Voltar", color = colors.onSurfaceVariant)
+                    }
+                }
+                Spacer(Modifier.height(14.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun KeyActionRow(
+    icon: ImageVector,
+    label: String,
+    tint: Color,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 12.dp, horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Icon(imageVector = icon, contentDescription = null, tint = tint)
+        Text(
+            text = label,
+            color = tint,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.SemiBold
+        )
     }
 }

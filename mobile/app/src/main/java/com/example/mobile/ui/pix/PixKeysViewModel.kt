@@ -29,7 +29,8 @@ data class PixKeysUiState(
     val value: String = "",
     val isLoading: Boolean = true,
     val isBusy: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val message: String? = null
 )
 
 class PixKeysViewModel(
@@ -44,8 +45,8 @@ class PixKeysViewModel(
         load()
     }
 
-    fun onTypeChange(type: PixKeyType) = _uiState.update { it.copy(type = type, value = "", error = null) }
-    fun onValueChange(value: String) = _uiState.update { it.copy(value = value, error = null) }
+    fun onTypeChange(type: PixKeyType) = _uiState.update { it.copy(type = type, value = "", error = null, message = null) }
+    fun onValueChange(value: String) = _uiState.update { it.copy(value = value, error = null, message = null) }
 
     fun load() {
         viewModelScope.launch {
@@ -62,20 +63,89 @@ class PixKeysViewModel(
             _uiState.update { it.copy(error = "Informe o valor da chave.") }
             return
         }
-        _uiState.update { it.copy(isBusy = true, error = null) }
+        _uiState.update { it.copy(isBusy = true, error = null, message = null) }
         viewModelScope.launch {
             repository.createKey(accountId, state.type.apiValue, state.value.trim())
                 .onSuccess { key ->
-                    _uiState.update { it.copy(keys = it.keys + key, value = "", isBusy = false) }
+                    _uiState.update {
+                        it.copy(
+                            keys = it.keys + key,
+                            value = "",
+                            isBusy = false,
+                            message = "Chave cadastrada com sucesso!"
+                        )
+                    }
+                }
+                .onFailure { e -> _uiState.update { it.copy(isBusy = false, error = e.message) } }
+        }
+    }
+
+    fun suspend(key: PixKeyResponse) {
+        if (_uiState.value.isBusy) return
+        _uiState.update { it.copy(isBusy = true, error = null, message = null) }
+        viewModelScope.launch {
+            repository.suspendKey(key.id)
+                .onSuccess { updated ->
+                    _uiState.update { state ->
+                        state.copy(
+                            keys = state.keys.map { if (it.id == updated.id) updated else it },
+                            isBusy = false,
+                            message = "Chave suspensa."
+                        )
+                    }
+                }
+                .onFailure { e -> _uiState.update { it.copy(isBusy = false, error = e.message) } }
+        }
+    }
+
+    fun unblock(key: PixKeyResponse) {
+        if (_uiState.value.isBusy) return
+        _uiState.update { it.copy(isBusy = true, error = null, message = null) }
+        viewModelScope.launch {
+            repository.unblockKey(key.id)
+                .onSuccess { updated ->
+                    _uiState.update { state ->
+                        state.copy(
+                            keys = state.keys.map { if (it.id == updated.id) updated else it },
+                            isBusy = false,
+                            message = "Chave reativada!"
+                        )
+                    }
+                }
+                .onFailure { e -> _uiState.update { it.copy(isBusy = false, error = e.message) } }
+        }
+    }
+
+    fun reassociate(key: PixKeyResponse, targetAccountId: Long, targetAccountLabel: String) {
+        if (_uiState.value.isBusy) return
+        _uiState.update { it.copy(isBusy = true, error = null, message = null) }
+        viewModelScope.launch {
+            repository.reassociateKey(key.id, targetAccountId)
+                .onSuccess {
+                    _uiState.update { state ->
+                        state.copy(
+                            keys = state.keys.filterNot { it.id == key.id },
+                            isBusy = false,
+                            message = "Chave transferida para $targetAccountLabel."
+                        )
+                    }
                 }
                 .onFailure { e -> _uiState.update { it.copy(isBusy = false, error = e.message) } }
         }
     }
 
     fun delete(key: PixKeyResponse) {
+        _uiState.update { it.copy(error = null, message = null) }
         viewModelScope.launch {
             repository.deleteKey(key.id)
-                .onSuccess { _uiState.update { it.copy(keys = it.keys.filterNot { k -> k.id == key.id }) } }
+                .onSuccess {
+                    _uiState.update {
+                        it.copy(
+                            keys = it.keys.filterNot { k -> k.id == key.id },
+                            message = "Chave removida."
+                        )
+                    }
+                }
                 .onFailure { e -> _uiState.update { it.copy(error = e.message) } }
         }
     }

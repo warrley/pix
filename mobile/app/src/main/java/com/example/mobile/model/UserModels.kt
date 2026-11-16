@@ -55,6 +55,9 @@ data class PixKeyCreateRequest(
 data class PixKeyCreateBody(@SerialName("pix_key") val pixKey: PixKeyCreateRequest)
 
 @Serializable
+data class PixKeyReassociateRequest(@SerialName("account_id") val accountId: Long)
+
+@Serializable
 data class PixKeyLookupResponse(
     @SerialName("key_type") val keyType: String,
     @SerialName("key_value") val keyValue: String,
