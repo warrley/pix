@@ -1,62 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="48dp"
-    android:height="48dp"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="64dp"
+    android:height="64dp"
     android:viewportWidth="100"
     android:viewportHeight="100">
 
-    <!-- Outer gem background / shadow -->
-    <path
-        android:pathData="M30,16 L70,16 L88,38 L50,88 L12,38 Z"
-        android:fillColor="#800015" />
+    <!-- Bright Crimson App Squircle Background -->
+    <path android:pathData="M24,0 L76,0 C89.2,0 100,10.8 100,24 L100,76 C100,89.2 89.2,100 76,100 L24,100 C10.8,100 0,89.2 0,76 L0,24 C0,10.8 10.8,0 24,0 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="0"
+                android:startY="0"
+                android:endX="100"
+                android:endY="100"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#FFFF2A55" />
+                <item android:offset="0.5" android:color="#FFCC0028" />
+                <item android:offset="1.0" android:color="#FF8B0014" />
+            </gradient>
+        </aapt:attr>
+    </path>
 
-    <!-- Table facet (top bright flat) -->
+    <!-- Left stem of the interlocking 'r' -->
     <path
-        android:pathData="M36,16 L64,16 L57,34 L43,34 Z"
-        android:fillColor="#FF5277" />
+        android:pathData="M18,28 C18,24 21,21 25,21 C29,21 32,24 32,28 L32,74 C32,78 29,81 25,81 C21,81 18,78 18,74 Z"
+        android:fillColor="#FFFFCCD7" />
 
-    <!-- Center triangle reflection -->
+    <!-- Continuous Nubank-inspired 'ru' ribbon curve -->
     <path
-        android:pathData="M43,34 L57,34 L50,44 Z"
-        android:fillColor="#FF85A0" />
+        android:pathData="M18,45 C18,29 29,19 43,19 C57,19 66,29 66,45 L66,61 C66,67 69.5,71 75,71 C80.5,71 84,67 84,61 L84,28 C84,24 87,21 91,21 C95,21 98,24 98,28 L98,61 C98,74.5 89,84 75,84 C61,84 52,74.5 52,61 L52,45 C52,37 48.5,33 43,33 C37.5,33 32,37.5 32,46 L18,45 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="18"
+                android:startY="19"
+                android:endX="98"
+                android:endY="84"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#FFFFFFFF" />
+                <item android:offset="0.6" android:color="#FFFFEBF0" />
+                <item android:offset="1.0" android:color="#FFFFB3C6" />
+            </gradient>
+        </aapt:attr>
+    </path>
 
-    <!-- Top-left upper facet -->
+    <!-- Geometric Ruby Gemstone Facet Highlight on the arch -->
     <path
-        android:pathData="M30,16 L36,16 L43,34 L12,38 Z"
-        android:fillColor="#FF2A55" />
-
-    <!-- Top-right upper facet -->
-    <path
-        android:pathData="M64,16 L70,16 L88,38 L57,34 Z"
-        android:fillColor="#E6002E" />
-
-    <!-- Middle-left facet -->
-    <path
-        android:pathData="M12,38 L43,34 L50,44 L32,64 Z"
-        android:fillColor="#CC0028" />
-
-    <!-- Middle-right facet -->
-    <path
-        android:pathData="M88,38 L57,34 L50,44 L68,64 Z"
-        android:fillColor="#B30022" />
-
-    <!-- Bottom center pavilion facet -->
-    <path
-        android:pathData="M50,44 L32,64 L50,88 L68,64 Z"
-        android:fillColor="#99001A" />
-
-    <!-- Bottom left facet -->
-    <path
-        android:pathData="M12,38 L32,64 L50,88 Z"
-        android:fillColor="#800015" />
-
-    <!-- Bottom right facet -->
-    <path
-        android:pathData="M88,38 L68,64 L50,88 Z"
-        android:fillColor="#5A000E" />
-
-    <!-- Jewel sparkle star at top left edge -->
-    <path
-        android:pathData="M32,18 L34,23 L39,25 L34,27 L32,32 L30,27 L25,25 L30,23 Z"
-        android:fillColor="#FFFFFF" />
-
+        android:pathData="M35,20 L51,20 L59,30 L43,32 L29,28 Z"
+        android:fillColor="#FFFFFFFF" />
 </vector>

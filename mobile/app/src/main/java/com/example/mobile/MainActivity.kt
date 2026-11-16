@@ -4,9 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.ui.Modifier
-import com.example.mobile.ui.account.AccountScreen
+import com.example.mobile.ui.navigation.AppRoot
 import com.example.mobile.ui.theme.MobileTheme
 
 class MainActivity : ComponentActivity() {
@@ -15,7 +13,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             MobileTheme {
-                AccountScreen(modifier = Modifier.fillMaxSize())
+                AppRoot()
             }
         }
     }

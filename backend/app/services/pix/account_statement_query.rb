@@ -25,13 +25,17 @@ module Pix
     end
 
     def call
-      # Busca transações onde a conta é origem ou destino
+      # Busca transações onde a conta é origem ou destino (exceto tentativas rejeitadas para quem não enviou, ou todas quando filtrado)
       relation = Transaction.where(source_account_id: @account_id)
                             .or(Transaction.where(destination_account_id: @account_id))
                             .order(created_at: :desc)
       relation = relation.where("created_at >= ?", @start_time) if @start_time
       relation = relation.where("created_at <= ?", @end_time) if @end_time
-      relation = relation.where(status: @status) if @status
+      relation = if @status
+                   relation.where(status: @status)
+      else
+                   relation.where.not(status: "failed")
+      end
 
       total_count = relation.count
       total_pages = (total_count.to_f / @per_page).ceil

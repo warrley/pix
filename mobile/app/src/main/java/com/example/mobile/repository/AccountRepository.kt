@@ -2,27 +2,19 @@ package com.example.mobile.repository
 
 import com.example.mobile.model.AccountResponse
 import com.example.mobile.network.AccountRemoteDataSource
-import com.example.mobile.network.KtorAccountRemoteDataSource
+import com.example.mobile.network.UserRemoteDataSource
 
 interface AccountRepository {
-    suspend fun getAccount(id: Long): Result<AccountResponse>
-    suspend fun createAccount(userId: Long, agencyNumber: String = "0001"): Result<AccountResponse>
-    suspend fun deleteAccount(id: Long): Result<Unit>
+    suspend fun getAccounts(userId: Long): Result<List<AccountResponse>>
+    suspend fun createAccount(agencyNumber: String = "0001"): Result<AccountResponse>
+    suspend fun closeAccount(id: Long): Result<Unit>
 }
 
 class DefaultAccountRepository(
-    private val remoteDataSource: AccountRemoteDataSource = KtorAccountRemoteDataSource()
+    private val accountDataSource: AccountRemoteDataSource,
+    private val userDataSource: UserRemoteDataSource
 ) : AccountRepository {
-
-    override suspend fun getAccount(id: Long): Result<AccountResponse> {
-        return remoteDataSource.getAccount(id)
-    }
-
-    override suspend fun createAccount(userId: Long, agencyNumber: String): Result<AccountResponse> {
-        return remoteDataSource.createAccount(userId, agencyNumber)
-    }
-
-    override suspend fun deleteAccount(id: Long): Result<Unit> {
-        return remoteDataSource.deleteAccount(id)
-    }
+    override suspend fun getAccounts(userId: Long) = userDataSource.getUserAccounts(userId)
+    override suspend fun createAccount(agencyNumber: String) = accountDataSource.createAccount(agencyNumber)
+    override suspend fun closeAccount(id: Long) = accountDataSource.deleteAccount(id)
 }
