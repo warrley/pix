@@ -80,6 +80,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_08_000000) do
     t.index ["status", "scheduled_for"], name: "index_scheduled_transfers_for_processing"
     t.index ["transaction_id"], name: "index_scheduled_transfers_on_transaction_id", unique: true
     t.check_constraint "amount_cents > 0", name: "scheduled_transfers_amount_positive"
+    t.check_constraint "account_id <> destination_account_id", name: "scheduled_transfers_no_self_transfer"
     t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'processing'::character varying, 'executed'::character varying, 'cancelled'::character varying, 'failed'::character varying]::text[])", name: "scheduled_transfers_status_valid"
   end
 

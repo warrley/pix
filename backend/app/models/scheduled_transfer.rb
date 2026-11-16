@@ -16,6 +16,7 @@ class ScheduledTransfer < ApplicationRecord
   validates :execution_key, presence: true, uniqueness: true, length: { is: 32 }
   validates :failure_reason, length: { maximum: 255 }, allow_nil: true
   validate :scheduled_for_is_future, on: :create
+  validate :destination_account_differs_from_source
 
   def amount
     Pix::Money.decimal_from_cents(amount_cents)
@@ -47,5 +48,11 @@ class ScheduledTransfer < ApplicationRecord
     return if scheduled_for.blank? || scheduled_for > Time.current.in_time_zone("America/Sao_Paulo").to_date
 
     errors.add(:scheduled_for, "must be a future date")
+  end
+
+  def destination_account_differs_from_source
+    return if account_id.blank? || destination_account_id.blank? || account_id != destination_account_id
+
+    errors.add(:destination_account, "must be different from the source account")
   end
 end

@@ -23,8 +23,12 @@ module Api
         date = Date.iso8601(input[:scheduled_for])
         key = PixKey.active.find_by(key_value: Pix::TransferService.normalize_key_value(input[:pix_key].to_s.strip))
         return render_error("PIX key not found", status: :unprocessable_entity, code: "pix_key.not_found") unless key
+        if key.account_id == account.id
+          return render_error("Self-transfers are not allowed", status: :unprocessable_entity, code: "transfer.self_transfer")
+        end
+
         scheduled_transfer = account.scheduled_transfers.new(
-          pix_key_used: input[:pix_key],
+          pix_key_used: input[:pix_key].to_s.strip,
           destination_account: key.account,
           amount_cents: amount_cents,
           description: input[:description],

@@ -15,6 +15,7 @@ class CreateScheduledTransfers < ActiveRecord::Migration[8.1]
       t.timestamps
 
       t.check_constraint "amount_cents > 0", name: "scheduled_transfers_amount_positive"
+      t.check_constraint "account_id <> destination_account_id", name: "scheduled_transfers_no_self_transfer"
       t.check_constraint "status IN ('pending', 'processing', 'executed', 'cancelled', 'failed')", name: "scheduled_transfers_status_valid"
     end
 

@@ -18,34 +18,60 @@ class ProcessScheduledTransfersJob < ApplicationJob
   private
 
   def process_scheduled_transfer(scheduled_transfer)
-    scheduled_transfer.with_lock do
-      next unless scheduled_transfer.pending? || stale_processing?(scheduled_transfer)
+    return unless claim_for_processing(scheduled_transfer)
 
-      scheduled_transfer.update!(status: :processing, processing_started_at: Time.current)
+    result = Pix::TransferService.call(
+      source_account_id: scheduled_transfer.account_id,
+      pix_key: scheduled_transfer.pix_key_used,
+      amount_cents: scheduled_transfer.amount_cents,
+      description: scheduled_transfer.description,
+      end_to_end_id: scheduled_transfer.execution_key,
+      record_failures: false,
+      expected_destination_account_id: scheduled_transfer.destination_account_id
+    )
+
+    finalize_scheduled_transfer(scheduled_transfer, result)
+  rescue StandardError => error
+    release_claim_after_error(scheduled_transfer, error)
+    raise
+  end
+
+  def claim_for_processing(scheduled_transfer)
+    scheduled_transfer.with_lock do
+      next false unless scheduled_transfer.pending? || stale_processing?(scheduled_transfer)
+
       existing = Transaction.find_by(end_to_end_id: scheduled_transfer.execution_key)
       if existing&.completed?
         scheduled_transfer.update!(status: :executed, completed_transaction: existing, failure_reason: nil, processing_started_at: nil)
-        next
+        next false
       end
 
       # A failed transaction has not debited the account; a fresh key permits retry.
       scheduled_transfer.rotate_execution_key! if existing&.failed?
-      result = Pix::TransferService.call(
-        source_account_id: scheduled_transfer.account_id,
-        pix_key: scheduled_transfer.pix_key_used,
-        amount_cents: scheduled_transfer.amount_cents,
-        description: scheduled_transfer.description,
-        end_to_end_id: scheduled_transfer.execution_key,
-        record_failures: false,
-        expected_destination_account_id: scheduled_transfer.destination_account_id
-      )
+      scheduled_transfer.update!(status: :processing, processing_started_at: Time.current)
+      true
+    end
+  end
 
+  def finalize_scheduled_transfer(scheduled_transfer, result)
+    scheduled_transfer.with_lock do
       if result.success? && result.transaction&.completed?
         scheduled_transfer.update!(status: :executed, completed_transaction: result.transaction, failure_reason: nil, processing_started_at: nil)
       elsif result.error&.code == "transfer.failed"
         scheduled_transfer.update!(status: :pending, failure_reason: failure_message(result), processing_started_at: nil)
       else
         scheduled_transfer.update!(status: :failed, failure_reason: failure_message(result), processing_started_at: nil)
+      end
+    end
+  end
+
+  def release_claim_after_error(scheduled_transfer, error)
+    scheduled_transfer.with_lock do
+      existing = Transaction.find_by(end_to_end_id: scheduled_transfer.execution_key)
+      if existing&.completed?
+        scheduled_transfer.update!(status: :executed, completed_transaction: existing, failure_reason: nil, processing_started_at: nil)
+      elsif scheduled_transfer.processing?
+        scheduled_transfer.update!(status: :pending, failure_reason: error.message.to_s.truncate(255), processing_started_at: nil)
       end
     end
   end

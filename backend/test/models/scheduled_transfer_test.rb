@@ -28,4 +28,12 @@ class ScheduledTransferTest < ActiveSupport::TestCase
     assert_equal "pending", transfer.status
     assert transfer.execution_key.present?
   end
+
+  test "rejects self-transfers to the same account" do
+    transfer = @account.scheduled_transfers.new(destination_account: @account,
+      pix_key_used: "scheduled@example.com", amount_cents: 100, scheduled_for: Date.tomorrow
+    )
+    assert_not transfer.valid?
+    assert_includes transfer.errors.attribute_names, :destination_account
+  end
 end

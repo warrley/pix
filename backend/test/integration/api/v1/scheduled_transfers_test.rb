@@ -39,4 +39,13 @@ class Api::V1::ScheduledTransfersTest < ActionDispatch::IntegrationTest
     get "/api/v1/accounts/#{account.id}/scheduled_transfers"
     assert_response :not_found
   end
+
+  test "rejects scheduling a self-transfer to a key of the same account" do
+    PixKey.create!(account: @account, key_type: :email, key_value: @user.email)
+    post "/api/v1/accounts/#{@account.id}/scheduled_transfers", params: {
+      scheduled_transfer: { pix_key: @user.email, amount: "10.00", scheduled_for: Date.tomorrow.to_s }
+    }, as: :json
+    assert_response :unprocessable_entity
+    assert_equal "transfer.self_transfer", response.parsed_body["code"]
+  end
 end

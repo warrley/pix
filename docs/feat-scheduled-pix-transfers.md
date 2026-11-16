@@ -92,34 +92,34 @@ Envelope de resposta deve seguir `render_success`/`render_error` atual. Fixar no
 
 ### Dados e validação
 
-- [ ] Migração cria tabela, FKs, índices e constraints; centavos positivos e status inválido são rejeitados pelo banco.
-- [ ] Data anterior ou igual à data local de hoje é rejeitada na criação; data futura válida em `America/Sao_Paulo` é aceita independente do fuso do servidor.
-- [ ] Valores inválidos, zero/negativos, acima do limite do sistema, chave acima de 77 caracteres e descrição acima de 140 retornam erro de validação consistente.
-- [ ] O agendamento não reserva nem altera saldo e não cria transação antes da execução.
+- [x] Migração cria tabela, FKs, índices e constraints; centavos positivos e status inválido são rejeitados pelo banco.
+- [x] Data anterior ou igual à data local de hoje é rejeitada na criação; data futura válida em `America/Sao_Paulo` é aceita independente do fuso do servidor.
+- [x] Valores inválidos, zero/negativos, acima do limite do sistema, chave acima de 77 caracteres e descrição acima de 140 retornam erro de validação consistente.
+- [x] O agendamento não reserva nem altera saldo e não cria transação antes da execução.
 
 ### API e segurança
 
-- [ ] Criar agendamento válido retorna `201` com status `pending` e dados persistidos.
-- [ ] Listar retorna somente a conta solicitada, em ordem estável; conta de outro usuário retorna `404`.
-- [ ] Usuário/token sem escopo necessário recebe `403`; sem autenticação recebe `401`.
-- [ ] Cancelar `pending` retorna `200` e estado `cancelled`; cancelar demais estados retorna `422`.
-- [ ] Cancelar/listar ID inexistente ou pertencente a terceiro retorna `404`.
+- [x] Criar agendamento válido retorna `201` com status `pending` e dados persistidos.
+- [x] Listar retorna somente a conta solicitada, em ordem estável; conta de outro usuário retorna `404`.
+- [x] Usuário/token sem escopo necessário recebe `403`; sem autenticação recebe `401`.
+- [x] Cancelar `pending` retorna `200` e estado `cancelled`; cancelar demais estados retorna `422`.
+- [x] Cancelar/listar ID inexistente ou pertencente a terceiro retorna `404`.
 
 ### Job e integridade financeira
 
-- [ ] Apenas registros devidos e `pending` são candidatos; datas futuras não executam.
-- [ ] Duas execuções concorrentes ou retry do mesmo job não produzem dois débitos/transações concluídas.
-- [ ] Sucesso chama `TransferService`, atualiza o agendamento para `executed`, associa a transação e gera uma transferência normal com evento/notificações existentes.
-- [ ] Saldo insuficiente, limite excedido, conta bloqueada/encerrada, chave inativa/inexistente e auto transferência registram falha sem interromper os demais registros do lote.
-- [ ] Erro transitório pode ser reprocessado sem duplicar transferência; claim abandonado tem recuperação documentada e testada.
-- [ ] Falha e execução não sobrescrevem cancelamento concorrente nem estado terminal.
+- [x] Apenas registros devidos e `pending` são candidatos; datas futuras não executam.
+- [x] Duas execuções concorrentes ou retry do mesmo job não produzem dois débitos/transações concluídas.
+- [x] Sucesso chama `TransferService`, atualiza o agendamento para `executed`, associa a transação e gera uma transferência normal com evento/notificações existentes.
+- [x] Saldo insuficiente, limite excedido, conta bloqueada/encerrada, chave inativa/inexistente e auto transferência registram falha sem interromper os demais registros do lote.
+- [x] Erro transitório pode ser reprocessado sem duplicar transferência; claim abandonado tem recuperação documentada e testada.
+- [x] Falha e execução não sobrescrevem cancelamento concorrente nem estado terminal.
 
 ### Entrega técnica
 
-- [ ] Testes Minitest cobrem modelo, job (incluindo concorrência/idempotência), integração da API, escopos e isolamento por usuário.
-- [ ] `backend/docs/openapi.yaml` e coleção Postman são atualizados conforme aplicável.
-- [ ] `config/recurring.yml` agenda o processamento diário em produção; operação local/teste pode invocar o job diretamente.
-- [ ] Migração e documentação do banco são atualizadas; executar a suíte existente e os testes adicionados antes de abrir PR.
+- [x] Testes Minitest cobrem modelo, job (incluindo concorrência/idempotência), integração da API, escopos e isolamento por usuário.
+- [x] `backend/docs/openapi.yaml` e coleção Postman são atualizados conforme aplicável.
+- [x] `config/recurring.yml` agenda o processamento diário em produção; operação local/teste pode invocar o job diretamente.
+- [x] Migração e documentação do banco são atualizadas; executar a suíte existente e os testes adicionados antes de abrir PR.
 
 ## Sequência sugerida de implementação
 
