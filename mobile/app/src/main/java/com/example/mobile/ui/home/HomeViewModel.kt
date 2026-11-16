@@ -9,6 +9,8 @@ import com.example.mobile.container
 import com.example.mobile.model.AccountResponse
 import com.example.mobile.model.StatementEntry
 import com.example.mobile.model.UserResponse
+import com.example.mobile.network.NotificationPreferences
+import com.example.mobile.network.NotificationPreferencesStore
 import com.example.mobile.repository.AccountRepository
 import com.example.mobile.repository.AuthRepository
 import com.example.mobile.repository.TransferRepository
@@ -23,6 +25,7 @@ data class HomeUiState(
     val accounts: List<AccountResponse> = emptyList(),
     val selectedAccountId: Long? = null,
     val statement: List<StatementEntry> = emptyList(),
+    val notificationPreferences: NotificationPreferences = NotificationPreferences(),
     val isLoading: Boolean = true,
     val isBusy: Boolean = false,
     val isBalanceVisible: Boolean = true,
@@ -36,15 +39,24 @@ data class HomeUiState(
 class HomeViewModel(
     private val authRepository: AuthRepository,
     private val accountRepository: AccountRepository,
-    private val transferRepository: TransferRepository
+    private val transferRepository: TransferRepository,
+    private val notificationPreferencesStore: NotificationPreferencesStore? = null
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(HomeUiState(user = authRepository.session.value?.user))
+    private val _uiState = MutableStateFlow(
+        HomeUiState(
+            user = authRepository.session.value?.user,
+            notificationPreferences = authRepository.session.value?.user?.id
+                ?.let { notificationPreferencesStore?.load(it) }
+                ?: NotificationPreferences()
+        )
+    )
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     fun refresh() {
         val user = authRepository.session.value?.user ?: return
-        _uiState.update { it.copy(user = user, isLoading = true, error = null) }
+        val prefs = notificationPreferencesStore?.load(user.id) ?: _uiState.value.notificationPreferences
+        _uiState.update { it.copy(user = user, notificationPreferences = prefs, isLoading = true, error = null) }
         viewModelScope.launch {
             accountRepository.getAccounts(user.id)
                 .onSuccess { accounts ->
@@ -61,6 +73,21 @@ class HomeViewModel(
     }
 
     fun toggleBalanceVisibility() = _uiState.update { it.copy(isBalanceVisible = !it.isBalanceVisible) }
+
+    fun setSmsNotifications(enabled: Boolean) = updateNotificationPreferences { copy(smsEnabled = enabled) }
+
+    fun setEmailNotifications(enabled: Boolean) = updateNotificationPreferences { copy(emailEnabled = enabled) }
+
+    fun setPushNotifications(enabled: Boolean) = updateNotificationPreferences { copy(pushEnabled = enabled) }
+
+    private fun updateNotificationPreferences(
+        transform: NotificationPreferences.() -> NotificationPreferences
+    ) {
+        val userId = _uiState.value.user?.id ?: return
+        val updated = _uiState.value.notificationPreferences.transform()
+        notificationPreferencesStore?.save(userId, updated)
+        _uiState.update { it.copy(notificationPreferences = updated) }
+    }
 
     fun createAccount() {
         if (_uiState.value.isBusy) return
@@ -118,7 +145,12 @@ class HomeViewModel(
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val c = container()
-                HomeViewModel(c.authRepository, c.accountRepository, c.transferRepository)
+                HomeViewModel(
+                    authRepository = c.authRepository,
+                    accountRepository = c.accountRepository,
+                    transferRepository = c.transferRepository,
+                    notificationPreferencesStore = c.notificationPreferencesStore
+                )
             }
         }
     }

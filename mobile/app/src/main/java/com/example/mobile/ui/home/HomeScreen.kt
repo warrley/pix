@@ -52,6 +52,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -260,6 +262,7 @@ fun HomeScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
                     .padding(horizontal = 24.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
@@ -383,6 +386,36 @@ fun HomeScreen(
                         )
                     }
                 }
+
+                HorizontalDivider(color = colors.outline)
+
+                Text(
+                    text = "Notificações de transações",
+                    color = colors.onSurfaceVariant,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold
+                )
+
+                NotificationToggleRow(
+                    title = "Notificações por SMS",
+                    subtitle = state.user?.phone?.takeIf { it.isNotBlank() } ?: "Receba alertas via SMS",
+                    checked = state.notificationPreferences.smsEnabled,
+                    onCheckedChange = viewModel::setSmsNotifications
+                )
+
+                NotificationToggleRow(
+                    title = "Notificações por e-mail",
+                    subtitle = state.user?.email.orEmpty().ifBlank { "Receba comprovantes por e-mail" },
+                    checked = state.notificationPreferences.emailEnabled,
+                    onCheckedChange = viewModel::setEmailNotifications
+                )
+
+                NotificationToggleRow(
+                    title = "Notificações no app",
+                    subtitle = "Alertas em tempo real no aparelho",
+                    checked = state.notificationPreferences.pushEnabled,
+                    onCheckedChange = viewModel::setPushNotifications
+                )
 
                 HorizontalDivider(color = colors.outline)
 
@@ -837,5 +870,50 @@ private fun RuFloatingDock(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun NotificationToggleRow(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    val colors = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(colors.surfaceVariant.copy(alpha = 0.6f))
+            .clickable { onCheckedChange(!checked) }
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                color = colors.onSurface,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 14.sp
+            )
+            Text(
+                text = subtitle,
+                color = colors.onSurfaceVariant,
+                fontSize = 12.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        Spacer(Modifier.width(12.dp))
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Color.White,
+                checkedTrackColor = colors.primary
+            )
+        )
     }
 }
