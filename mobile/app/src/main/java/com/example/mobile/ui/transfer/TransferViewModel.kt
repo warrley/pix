@@ -27,6 +27,9 @@ data class TransferUiState(
     val pixKey: String = "",
     val amount: String = "",
     val description: String = "",
+    val latitude: String? = null,
+    val longitude: String? = null,
+    val includeLocation: Boolean = false,
     val recipient: PixKeyLookupResponse? = null,
     val recentContacts: List<RecentPixContact> = emptyList(),
     val isLookingUp: Boolean = false,
@@ -55,6 +58,16 @@ class TransferViewModel(
     fun onPixKeyChange(value: String) = edit { copy(pixKey = value, recipient = null) }
     fun onAmountChange(value: String) = edit { copy(amount = value) }
     fun onDescriptionChange(value: String) = edit { copy(description = value) }
+
+    fun setLocation(latitude: String?, longitude: String?, enabled: Boolean) {
+        _uiState.update {
+            it.copy(
+                includeLocation = enabled,
+                latitude = if (enabled) latitude else null,
+                longitude = if (enabled) longitude else null
+            )
+        }
+    }
 
     fun applyPrefill(
         pixKey: String,
@@ -161,7 +174,9 @@ class TransferViewModel(
                 sourceAccountId = sourceAccountId,
                 pixKey = state.pixKey.trim(),
                 amount = amount,
-                description = state.description.trim().ifEmpty { null }
+                description = state.description.trim().ifEmpty { null },
+                latitude = if (state.includeLocation) state.latitude else null,
+                longitude = if (state.includeLocation) state.longitude else null
             )
             repository.transfer(request, idempotencyKey)
                 .onSuccess { receipt ->

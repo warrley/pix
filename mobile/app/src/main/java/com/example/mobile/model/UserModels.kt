@@ -73,7 +73,9 @@ data class TransferRequest(
     @SerialName("pix_key") val pixKey: String,
     /** Decimal string with at most two fraction digits, e.g. "10.50". */
     val amount: String,
-    val description: String? = null
+    val description: String? = null,
+    val latitude: String? = null,
+    val longitude: String? = null
 )
 
 @Serializable
@@ -92,6 +94,8 @@ data class TransferReceipt(
     val amount: String,
     val status: String,
     val description: String? = null,
+    val latitude: String? = null,
+    val longitude: String? = null,
     @SerialName("created_at") val createdAt: String? = null,
     val sender: TransferParty = TransferParty(),
     val receiver: TransferParty = TransferParty()

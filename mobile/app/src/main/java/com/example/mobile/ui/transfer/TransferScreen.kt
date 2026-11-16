@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Contacts
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -47,6 +48,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -79,6 +82,7 @@ import com.example.mobile.ui.components.ErrorText
 import com.example.mobile.ui.components.PixScaffold
 import com.example.mobile.ui.components.ScreenColumn
 import com.example.mobile.ui.theme.RuGreen
+import com.example.mobile.util.DeviceLocationProvider
 import com.example.mobile.util.parseAmountInput
 import com.example.mobile.util.toBrl
 
@@ -149,6 +153,55 @@ fun TransferScreen(
             showContactsSheet = true
         } else {
             contactsPermissionLauncher.launch(Manifest.permission.READ_CONTACTS)
+        }
+    }
+
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { results ->
+        val granted = results.values.any { it }
+        if (granted) {
+            val coords = DeviceLocationProvider.lastKnownCoordinates(context)
+            if (coords != null) {
+                viewModel.setLocation(coords.latitude, coords.longitude, enabled = true)
+            } else {
+                Toast.makeText(context, "Localização indisponível no momento.", Toast.LENGTH_SHORT).show()
+                viewModel.setLocation(null, null, enabled = false)
+            }
+        } else {
+            viewModel.setLocation(null, null, enabled = false)
+        }
+    }
+
+    LaunchedEffect(step) {
+        if (step == 3 && !state.includeLocation && DeviceLocationProvider.hasPermission(context)) {
+            val coords = DeviceLocationProvider.lastKnownCoordinates(context)
+            if (coords != null) {
+                viewModel.setLocation(coords.latitude, coords.longitude, enabled = true)
+            }
+        }
+    }
+
+    fun toggleTransactionLocation(enabled: Boolean) {
+        if (!enabled) {
+            viewModel.setLocation(null, null, enabled = false)
+            return
+        }
+        if (DeviceLocationProvider.hasPermission(context)) {
+            val coords = DeviceLocationProvider.lastKnownCoordinates(context)
+            if (coords != null) {
+                viewModel.setLocation(coords.latitude, coords.longitude, enabled = true)
+            } else {
+                Toast.makeText(context, "Não foi possível obter a localização do aparelho.", Toast.LENGTH_SHORT).show()
+                viewModel.setLocation(null, null, enabled = false)
+            }
+        } else {
+            locationPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                )
+            )
         }
     }
 
@@ -822,6 +875,53 @@ fun TransferScreen(
                             )
                         }
 
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { toggleTransactionLocation(!state.includeLocation) }
+                                .padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.LocationOn,
+                                    contentDescription = null,
+                                    tint = if (state.includeLocation) colors.primary else colors.onSurfaceVariant,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Text(
+                                        text = "Enviar localização",
+                                        color = colors.onBackground,
+                                        fontWeight = FontWeight.Medium,
+                                        fontSize = 14.sp
+                                    )
+                                    Text(
+                                        text = if (state.includeLocation && state.latitude != null && state.longitude != null) {
+                                            "${state.latitude}, ${state.longitude}"
+                                        } else {
+                                            "Opcional, para segurança da transação"
+                                        },
+                                        color = colors.onSurfaceVariant,
+                                        fontSize = 12.sp
+                                    )
+                                }
+                            }
+                            Switch(
+                                checked = state.includeLocation,
+                                onCheckedChange = ::toggleTransactionLocation,
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = Color.White,
+                                    checkedTrackColor = colors.primary
+                                )
+                            )
+                        }
+
                         ErrorText(state.error)
                         Spacer(Modifier.height(90.dp))
                     }
@@ -925,6 +1025,13 @@ private fun ReceiptCard(receipt: TransferReceipt) {
             Text("Status: ${receipt.status}", color = colors.onSurfaceVariant)
             receipt.endToEndId?.let {
                 Text("ID E2E: $it", style = MaterialTheme.typography.labelSmall, color = colors.onSurfaceVariant)
+            }
+            if (!receipt.latitude.isNullOrBlank() && !receipt.longitude.isNullOrBlank()) {
+                Text(
+                    text = "Localização: ${receipt.latitude}, ${receipt.longitude}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.onSurfaceVariant
+                )
             }
         }
     }

@@ -174,4 +174,17 @@ class TransferViewModelTest {
         assertEquals("Ana", contacts[1].name)
         assertEquals("+5511999990000", contacts[1].pixKey)
     }
+
+    @Test fun submit_includesLocationWhenEnabled() {
+        val repo = FakeRepo(Result.success(receipt))
+        val vm = vm(repo)
+        vm.onPixKeyChange("bia@x.com")
+        vm.onAmountChange("10")
+        vm.setLocation("-23.55052000", "-46.63330800", enabled = true)
+        vm.submit()
+
+        val (request, _) = repo.requests.single()
+        assertEquals("-23.55052000", request.latitude)
+        assertEquals("-46.63330800", request.longitude)
+    }
 }
