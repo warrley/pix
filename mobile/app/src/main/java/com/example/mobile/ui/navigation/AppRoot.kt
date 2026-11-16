@@ -9,8 +9,10 @@ import com.example.mobile.ui.auth.AuthScreen
 import com.example.mobile.ui.components.UnderDevelopmentScreen
 import com.example.mobile.ui.home.HomeScreen
 import com.example.mobile.ui.home.HomeViewModel
+import com.example.mobile.ui.pix.PixChargeScreen
 import com.example.mobile.ui.pix.PixHubScreen
 import com.example.mobile.ui.pix.PixKeysScreen
+import com.example.mobile.ui.pix.PixQrScanScreen
 import com.example.mobile.ui.summary.FinancialSummaryScreen
 import com.example.mobile.ui.transfer.TransferScreen
 
@@ -18,6 +20,7 @@ import com.example.mobile.ui.transfer.TransferScreen
 fun AppRoot(viewModel: AppViewModel = viewModel(factory = AppViewModel.Factory)) {
     val screen by viewModel.screen.collectAsState()
     val userId by viewModel.userId.collectAsState()
+    val userName by viewModel.userName.collectAsState()
 
     BackHandler(enabled = screen != Screen.Login && screen != Screen.Home) { viewModel.back() }
 
@@ -50,12 +53,49 @@ fun AppRoot(viewModel: AppViewModel = viewModel(factory = AppViewModel.Factory))
                     )
                 )
             },
+            onOpenQrScan = { startInPasteMode ->
+                viewModel.navigate(
+                    Screen.PixQrScan(
+                        accountId = current.accountId,
+                        balance = current.balance,
+                        startInPasteMode = startInPasteMode
+                    )
+                )
+            },
+            onOpenCharge = {
+                viewModel.navigate(Screen.PixCharge(current.accountId))
+            },
             onOpenPixKeys = {
                 viewModel.navigate(Screen.PixKeys(current.accountId))
             },
             onOpenUnderDevelopment = { feature ->
                 viewModel.navigate(Screen.UnderDevelopment(feature))
             }
+        )
+        is Screen.PixCharge -> PixChargeScreen(
+            accountId = current.accountId,
+            userName = userName,
+            onOpenPixKeys = {
+                viewModel.navigate(Screen.PixKeys(current.accountId))
+            },
+            onBack = viewModel::back
+        )
+        is Screen.PixQrScan -> PixQrScanScreen(
+            accountId = current.accountId,
+            startInPasteMode = current.startInPasteMode,
+            onQrVerified = { verified ->
+                viewModel.replaceTop(
+                    Screen.Transfer(
+                        accountId = current.accountId,
+                        balance = current.balance,
+                        initialKey = verified.pixKey,
+                        initialAmount = verified.amount,
+                        initialRecipient = verified.recipient,
+                        initialDescription = verified.description
+                    )
+                )
+            },
+            onBack = viewModel::back
         )
         is Screen.PixKeys -> PixKeysScreen(current.accountId, onBack = viewModel::back)
         is Screen.Transfer -> {
@@ -70,6 +110,9 @@ fun AppRoot(viewModel: AppViewModel = viewModel(factory = AppViewModel.Factory))
                 recentStatement = homeState.statement,
                 initialKey = current.initialKey,
                 initialAmount = current.initialAmount,
+                initialRecipient = current.initialRecipient,
+                initialDescription = current.initialDescription,
+                flowId = current.flowId,
                 onBack = viewModel::back
             )
         }

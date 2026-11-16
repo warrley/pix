@@ -64,6 +64,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.mobile.model.PixKeyLookupResponse
 import com.example.mobile.model.StatementEntry
 import com.example.mobile.model.TransferReceipt
 import com.example.mobile.ui.components.ErrorText
@@ -94,19 +95,41 @@ fun TransferScreen(
     recentStatement: List<StatementEntry> = emptyList(),
     initialKey: String = "",
     initialAmount: String = "",
+    initialRecipient: PixKeyLookupResponse? = null,
+    initialDescription: String = "",
+    flowId: Long = 0L,
     onBack: () -> Unit
 ) {
     val viewModel: TransferViewModel = viewModel(
-        key = "transfer-$accountId",
+        key = "transfer-$accountId-$flowId",
         factory = TransferViewModel.factory(accountId)
     )
     val state by viewModel.uiState.collectAsState()
     val colors = MaterialTheme.colorScheme
 
-    var step by remember { mutableIntStateOf(1) }
+    var step by remember(flowId) {
+        mutableIntStateOf(
+            when {
+                initialRecipient != null && initialAmount.isNotBlank() -> 3
+                initialRecipient != null -> 2
+                else -> 1
+            }
+        )
+    }
     var showDetails by remember { mutableStateOf(false) }
 
-    LaunchedEffect(initialKey, initialAmount) {
+    LaunchedEffect(flowId, initialKey, initialAmount, initialRecipient, initialDescription) {
+        if (initialRecipient != null) {
+            if (state.recipient == null && state.receipt == null) {
+                viewModel.applyPrefill(
+                    pixKey = initialKey.ifBlank { initialRecipient.keyValue },
+                    amount = initialAmount,
+                    recipient = initialRecipient,
+                    description = initialDescription
+                )
+            }
+            return@LaunchedEffect
+        }
         if (initialAmount.isNotBlank() && state.amount.isBlank()) {
             viewModel.onAmountChange(initialAmount)
         }

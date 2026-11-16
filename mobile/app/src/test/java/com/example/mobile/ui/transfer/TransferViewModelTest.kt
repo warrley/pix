@@ -1,5 +1,6 @@
 package com.example.mobile.ui.transfer
 
+import com.example.mobile.model.PixKeyLookupResponse
 import com.example.mobile.model.StatementEntry
 import com.example.mobile.model.TransferReceipt
 import com.example.mobile.model.TransferRequest
@@ -90,5 +91,24 @@ class TransferViewModelTest {
 
         assertEquals("Insufficient funds", vm.uiState.value.error)
         assertEquals(false, repo.requests[0].second == repo.requests[1].second)
+    }
+
+    @Test fun applyPrefill_setsRecipientAmountAndDescription() {
+        val repo = FakeRepo(Result.success(receipt))
+        val vm = vm(repo)
+        val recipient = PixKeyLookupResponse(
+            keyType = "email",
+            keyValue = "bia@x.com",
+            accountId = 9L,
+            accountNumber = "9999-1",
+            recipientName = "Beatriz"
+        )
+
+        vm.applyPrefill("bia@x.com", "25.00", recipient, "Café")
+
+        assertEquals("bia@x.com", vm.uiState.value.pixKey)
+        assertEquals("25.00", vm.uiState.value.amount)
+        assertEquals("Beatriz", vm.uiState.value.recipient?.recipientName)
+        assertEquals("Café", vm.uiState.value.description)
     }
 }

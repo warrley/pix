@@ -53,12 +53,14 @@ import com.example.mobile.ui.components.ScreenColumn
 
 /**
  * Original Nubank "Área Pix" (Figma Tela 18 — leftmost original flow),
- * showing only the real implemented features (no Pix no crédito, Depositar, Pix por áudio, QR code, or Cobrar).
+ * with Transferir, Pix Copia e Cola, Ler QR code, Cobrar, and Pix Keys management.
  */
 @Composable
 fun PixHubScreen(
     onBack: () -> Unit,
     onOpenTransfer: (initialKey: String, initialAmount: String) -> Unit,
+    onOpenQrScan: (startInPasteMode: Boolean) -> Unit,
+    onOpenCharge: () -> Unit,
     onOpenPixKeys: () -> Unit,
     onOpenUnderDevelopment: (String) -> Unit
 ) {
@@ -148,17 +150,17 @@ fun PixHubScreen(
                 PixGridButton(
                     icon = Icons.Default.ContentCopy,
                     label = "Pix Copia\ne Cola",
-                    onClick = { onOpenUnderDevelopment("Pix Copia e Cola") }
+                    onClick = { onOpenQrScan(true) }
                 )
                 PixGridButton(
                     icon = Icons.Default.QrCodeScanner,
                     label = "Ler QR\ncode",
-                    onClick = { onOpenUnderDevelopment("Ler QR code") }
+                    onClick = { onOpenQrScan(false) }
                 )
                 PixGridButton(
                     icon = Icons.Default.AttachMoney,
                     label = "Cobrar",
-                    onClick = { onOpenUnderDevelopment("Cobrar") }
+                    onClick = onOpenCharge
                 )
             }
 

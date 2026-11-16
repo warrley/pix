@@ -49,6 +49,21 @@ class TransferViewModel(
     fun onAmountChange(value: String) = edit { copy(amount = value) }
     fun onDescriptionChange(value: String) = edit { copy(description = value) }
 
+    fun applyPrefill(
+        pixKey: String,
+        amount: String,
+        recipient: PixKeyLookupResponse,
+        description: String = ""
+    ) {
+        idempotencyKey = newIdempotencyKey()
+        _uiState.value = TransferUiState(
+            pixKey = pixKey,
+            amount = amount,
+            description = description,
+            recipient = recipient
+        )
+    }
+
     /**
      * Validates that the destination Pix key exists, is active, and does not belong
      * to the current user before allowing the transfer flow to advance to Step 2.

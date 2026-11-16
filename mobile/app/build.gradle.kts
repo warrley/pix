@@ -63,6 +63,14 @@ dependencies {
     implementation(libs.io.ktor.serialization.kotlinx.json)
     implementation(libs.io.ktor.client.logging)
 
+    // QR Code Generation & Scanning
+    implementation(libs.zxing.core)
+    implementation(libs.androidx.camera.core)
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.view)
+    implementation(libs.mlkit.barcode.scanning)
+
     // Testing
     testImplementation(libs.junit)
     testImplementation(libs.io.ktor.client.mock)
