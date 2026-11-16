@@ -20,7 +20,7 @@ POSTGRES_PASSWORD=postgres
 Make sure you have Docker installed. We use PostgreSQL 15, which will be automatically pulled and started by Docker. To start the database and backend, run:
 
 ```bash
-docker compose up
+docker compose up --build
 ```
 
 ### 3. Fixing Common Permission Errors (Linux Users)
@@ -38,9 +38,39 @@ sudo chmod 644 backend/config/master.key
 
 ### 4. Verify it's working!
 Open your browser and navigate to the health check endpoint:
-👉 [http://localhost/up](http://localhost/up)
+👉 [http://localhost:3000/up](http://localhost:3000/up)
 
 If you see a green screen with the Rails logo, your local setup is perfect!
+
+### 5. Seeding the Database (Test Data)
+When running `docker compose up --build` for the first time, `rails db:prepare` runs migrations and seeds the database automatically. If your database was already initialized and you want to reload the test seeds for Postman, run:
+
+```bash
+docker compose exec backend bundle exec rails db:seed
+```
+
+#### Pre-configured Test Users:
+| User | Email | Password | Role | Pix Key | Initial Balance |
+|---|---|---|---|---|---|
+| **Alice Silva** | `alice.test@example.com` | `password123` | `operator` (Full access) | `alice.test@example.com` | R$ 1,500.00 |
+| **Bob Santos** | `bob.test@example.com` | `password123` | `customer` | `bob.test@example.com` | R$ 800.00 |
+
+---
+
+## API Testing with Postman
+
+We provide a comprehensive Postman test collection covering 100% of the API v1 flows:
+
+- **File:** [`postman_pix_master_suite.json`](postman_pix_master_suite.json)
+- **Coverage:** 25 requests including JWT auth, accounts, statement, fraud blocking, Pix keys, transfers with idempotency, and refunds.
+
+### How to run in VS Code / Postman:
+1. Open the **Postman** extension in VS Code or Postman Desktop.
+2. Click **Import** and select `postman_pix_master_suite.json` from the repository root.
+3. Ensure `baseUrl` is set to `http://localhost:3000` (default).
+4. Run requests individually or run the whole suite with **Collection Runner**. Tokens and IDs are dynamically linked across requests.
+
+---
 
 ## Contributing
 Check the `CONTRIBUTING.md` file for our team rules before pushing code.

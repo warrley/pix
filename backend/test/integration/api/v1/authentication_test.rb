@@ -126,4 +126,29 @@ class Api::V1::AuthenticationTest < ActionDispatch::IntegrationTest
   def bearer_headers(token)
     { "Authorization" => "Bearer #{token}" }
   end
+
+  test "POST /api/v1/auth/signup creates a customer without authentication" do
+    post api_v1_auth_signup_path, params: {
+      user: {
+        name: "New Customer",
+        email: "new@example.com",
+        doc_id: "52998224725",
+        phone: "+5511999999999",
+        password: "correct horse battery staple",
+        role: "operator"
+      }
+    }, as: :json
+
+    assert_response :created
+    assert_equal "customer", User.find_by!(email: "new@example.com").role
+    refute response.parsed_body["data"].key?("password_digest")
+  end
+
+  test "POST /api/v1/auth/signup requires a password" do
+    post api_v1_auth_signup_path, params: {
+      user: { name: "No Pass", email: "nopass@example.com", doc_id: "52998224725" }
+    }, as: :json
+
+    assert_response :unprocessable_entity
+  end
 end

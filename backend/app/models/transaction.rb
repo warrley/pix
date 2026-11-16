@@ -3,7 +3,8 @@ class Transaction < ApplicationRecord
     processing: "processing",
     completed:  "completed",
     failed:     "failed",
-    cancelled:  "cancelled"
+    cancelled:  "cancelled",
+    refunded:   "refunded"
   }, default: :processing, validate: true
 
   belongs_to :source_account, class_name: "Account"
