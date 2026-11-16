@@ -4,6 +4,8 @@ import android.app.Application
 import android.content.Context
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.CreationExtras
+import com.example.mobile.network.BiometricCredentialStore
+import com.example.mobile.network.KeystoreBiometricCredentialStore
 import com.example.mobile.network.KtorAccountRemoteDataSource
 import com.example.mobile.network.KtorAuthRemoteDataSource
 import com.example.mobile.network.KtorClient
@@ -42,6 +44,9 @@ class AppContainer(context: Context) {
     }
     val profilePhotoStore: ProfilePhotoStore by lazy {
         LocalProfilePhotoStore(context)
+    }
+    val biometricCredentialStore: BiometricCredentialStore by lazy {
+        KeystoreBiometricCredentialStore(context)
     }
 
     private val userRemoteDataSource by lazy { KtorUserRemoteDataSource(client) }

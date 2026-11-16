@@ -1,33 +1,45 @@
 package com.example.mobile.ui.auth
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -38,6 +50,7 @@ import com.example.mobile.ui.components.FormField
 import com.example.mobile.ui.components.RuBankBrandBadge
 import com.example.mobile.ui.theme.RuRubyDark
 import com.example.mobile.ui.theme.RuRubyRed
+import com.example.mobile.util.BiometricAuthHelper
 
 @Composable
 fun AuthScreen(viewModel: AuthViewModel = viewModel(factory = AuthViewModel.Factory)) {
@@ -45,6 +58,28 @@ fun AuthScreen(viewModel: AuthViewModel = viewModel(factory = AuthViewModel.Fact
     val expired by viewModel.sessionExpired.collectAsState()
     val signUp = state.mode == AuthMode.SIGN_UP
     val colors = MaterialTheme.colorScheme
+    val context = LocalContext.current
+    val biometricAvailable = remember(context) { BiometricAuthHelper.canAuthenticate(context) }
+
+    LaunchedEffect(Unit) {
+        viewModel.refreshBiometricState()
+    }
+
+    fun triggerBiometricLogin() {
+        val activity = BiometricAuthHelper.findFragmentActivity(context)
+        if (activity == null) {
+            viewModel.setBiometricError("Biometria indisponível neste contexto.")
+            return
+        }
+        val subtitleName = state.savedBiometricName ?: state.savedBiometricEmail ?: "sua conta RuBank"
+        BiometricAuthHelper.authenticate(
+            activity = activity,
+            title = "Entrar no RuBank",
+            subtitle = "Use sua digital para acessar $subtitleName",
+            onSuccess = viewModel::loginWithBiometrics,
+            onError = viewModel::setBiometricError
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -148,12 +183,35 @@ fun AuthScreen(viewModel: AuthViewModel = viewModel(factory = AuthViewModel.Fact
                     enabled = !state.isLoading
                 )
 
+                if (biometricAvailable) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(enabled = !state.isLoading) {
+                                viewModel.onEnableBiometricChange(!state.enableBiometricOnLogin)
+                            },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = state.enableBiometricOnLogin,
+                            onCheckedChange = viewModel::onEnableBiometricChange,
+                            enabled = !state.isLoading,
+                            colors = CheckboxDefaults.colors(checkedColor = colors.primary)
+                        )
+                        Text(
+                            text = "Ativar entrada rápida com biometria (digital)",
+                            color = colors.onSurfaceVariant,
+                            fontSize = 13.sp
+                        )
+                    }
+                }
+
                 ErrorText(state.error)
 
                 Spacer(Modifier.height(4.dp))
 
                 Button(
-                    onClick = viewModel::submit,
+                    onClick = { viewModel.submit(biometricHardwareAvailable = biometricAvailable) },
                     enabled = !state.isLoading,
                     shape = RoundedCornerShape(50),
                     colors = ButtonDefaults.buttonColors(
@@ -175,6 +233,32 @@ fun AuthScreen(viewModel: AuthViewModel = viewModel(factory = AuthViewModel.Fact
                             text = if (signUp) "Cadastrar e entrar" else "Continuar",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+
+                if (!signUp && biometricAvailable && state.hasSavedBiometrics) {
+                    OutlinedButton(
+                        onClick = ::triggerBiometricLogin,
+                        enabled = !state.isLoading,
+                        shape = RoundedCornerShape(50),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Fingerprint,
+                            contentDescription = null,
+                            tint = colors.primary,
+                            modifier = Modifier.size(22.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = state.savedBiometricName?.let { "Entrar com digital ($it)" }
+                                ?: "Entrar com digital",
+                            color = colors.primary,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }

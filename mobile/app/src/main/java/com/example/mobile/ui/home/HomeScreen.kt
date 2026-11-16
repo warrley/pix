@@ -73,6 +73,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -81,6 +82,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mobile.model.AccountResponse
 import com.example.mobile.ui.components.ErrorText
+import com.example.mobile.ui.components.FormField
 import com.example.mobile.ui.components.LoadingBox
 import com.example.mobile.ui.components.ProfileAvatar
 import com.example.mobile.ui.components.RubyGemIcon
@@ -88,6 +90,7 @@ import com.example.mobile.ui.theme.RuCoralRed
 import com.example.mobile.ui.theme.RuGreen
 import com.example.mobile.ui.theme.RuRubyDark
 import com.example.mobile.ui.theme.RuRubyRed
+import com.example.mobile.util.BiometricAuthHelper
 import com.example.mobile.util.toBrl
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -105,7 +108,12 @@ fun HomeScreen(
     val state by viewModel.uiState.collectAsState()
     var showProfileSheet by remember { mutableStateOf(false) }
     var confirmClose by remember { mutableStateOf(false) }
+    var showEnableBiometricDialog by remember { mutableStateOf(false) }
+    var biometricPassword by remember { mutableStateOf("") }
+    var biometricDialogError by remember { mutableStateOf<String?>(null) }
     val colors = MaterialTheme.colorScheme
+    val context = LocalContext.current
+    val biometricAvailable = remember(context) { BiometricAuthHelper.canAuthenticate(context) }
 
     LaunchedEffect(Unit) { viewModel.refresh() }
 
@@ -447,6 +455,33 @@ fun HomeScreen(
                     onCheckedChange = viewModel::setPushNotifications
                 )
 
+                if (biometricAvailable) {
+                    HorizontalDivider(color = colors.outline)
+
+                    Text(
+                        text = "Segurança",
+                        color = colors.onSurfaceVariant,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    NotificationToggleRow(
+                        title = "Entrar com biometria (digital)",
+                        subtitle = if (state.biometricEnabled) "Ativada para próximos logins" else "Use sua digital na tela de login",
+                        checked = state.biometricEnabled,
+                        onCheckedChange = { enabled ->
+                            if (!enabled) {
+                                viewModel.disableBiometricLogin()
+                            } else {
+                                showProfileSheet = false
+                                biometricPassword = ""
+                                biometricDialogError = null
+                                showEnableBiometricDialog = true
+                            }
+                        }
+                    )
+                }
+
                 HorizontalDivider(color = colors.outline)
 
                 // Logout button inside Profile
@@ -485,6 +520,63 @@ fun HomeScreen(
             },
             dismissButton = {
                 TextButton(onClick = { confirmClose = false }) {
+                    Text("Cancelar", color = colors.onSurface)
+                }
+            }
+        )
+    }
+
+    if (showEnableBiometricDialog) {
+        AlertDialog(
+            containerColor = colors.surface,
+            titleContentColor = colors.onSurface,
+            textContentColor = colors.onSurfaceVariant,
+            onDismissRequest = { showEnableBiometricDialog = false },
+            title = { Text("Ativar entrada por digital") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Confirme sua senha atual para vincular sua biometria a este aparelho.")
+                    FormField(
+                        value = biometricPassword,
+                        onValueChange = {
+                            biometricPassword = it
+                            biometricDialogError = null
+                        },
+                        label = "Senha atual",
+                        isPassword = true
+                    )
+                    ErrorText(biometricDialogError)
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val activity = BiometricAuthHelper.findFragmentActivity(context)
+                        if (activity == null) {
+                            biometricDialogError = "Biometria indisponível."
+                            return@TextButton
+                        }
+                        BiometricAuthHelper.authenticate(
+                            activity = activity,
+                            title = "Confirmar digital",
+                            subtitle = "Toque no sensor para ativar a entrada por biometria",
+                            negativeButtonText = "Cancelar",
+                            onSuccess = {
+                                viewModel.enableBiometricLogin(biometricPassword) { err ->
+                                    if (err == null) {
+                                        showEnableBiometricDialog = false
+                                    } else {
+                                        biometricDialogError = err
+                                    }
+                                }
+                            },
+                            onError = { err -> biometricDialogError = err }
+                        )
+                    }
+                ) { Text("Confirmar", color = colors.primary, fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEnableBiometricDialog = false }) {
                     Text("Cancelar", color = colors.onSurface)
                 }
             }

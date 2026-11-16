@@ -3,7 +3,9 @@ package com.example.mobile.ui.auth
 import com.example.mobile.model.SignUpRequest
 import com.example.mobile.model.UserResponse
 import com.example.mobile.network.ApiException
+import com.example.mobile.network.InMemoryBiometricCredentialStore
 import com.example.mobile.network.Session
+import com.example.mobile.network.UnauthorizedException
 import com.example.mobile.repository.AuthRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -101,5 +103,37 @@ class AuthViewModelTest {
 
         assertEquals(0, auth.logins)
         assertEquals("email: has already been taken", vm.uiState.value.error)
+    }
+
+    @Test fun login_savesBiometricsWhenEnabledAndLogsInWithBiometrics() {
+        val auth = FakeAuth()
+        val bioStore = InMemoryBiometricCredentialStore()
+        val vm = AuthViewModel(auth, bioStore)
+
+        vm.onEmailChange("ana@x.com")
+        vm.onPasswordChange("secret123456")
+        vm.submit(biometricHardwareAvailable = true)
+
+        assertEquals(true, bioStore.isEnabled())
+        assertEquals("ana@x.com", bioStore.savedEmail())
+        assertEquals("Ana", bioStore.savedDisplayName())
+
+        vm.loginWithBiometrics()
+        assertEquals(2, auth.logins)
+        assertNull(vm.uiState.value.error)
+    }
+
+    @Test fun loginWithBiometrics_clearsStaleCredentialsOnUnauthorized() {
+        val auth = FakeAuth().apply { loginResult = Result.failure(UnauthorizedException("Senha inválida")) }
+        val bioStore = InMemoryBiometricCredentialStore().apply {
+            save("ana@x.com", "old-password", "Ana")
+        }
+        val vm = AuthViewModel(auth, bioStore)
+
+        vm.loginWithBiometrics()
+
+        assertEquals(false, bioStore.isEnabled())
+        assertEquals(false, vm.uiState.value.hasSavedBiometrics)
+        assertNotNull(vm.uiState.value.error)
     }
 }

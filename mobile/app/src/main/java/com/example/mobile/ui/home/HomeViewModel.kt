@@ -9,6 +9,7 @@ import com.example.mobile.container
 import com.example.mobile.model.AccountResponse
 import com.example.mobile.model.StatementEntry
 import com.example.mobile.model.UserResponse
+import com.example.mobile.network.BiometricCredentialStore
 import com.example.mobile.network.NotificationPreferences
 import com.example.mobile.network.NotificationPreferencesStore
 import com.example.mobile.network.ProfilePhotoStore
@@ -29,6 +30,7 @@ data class HomeUiState(
     val selectedAccountId: Long? = null,
     val statement: List<StatementEntry> = emptyList(),
     val notificationPreferences: NotificationPreferences = NotificationPreferences(),
+    val biometricEnabled: Boolean = false,
     val photoPath: String? = null,
     val photoVersion: Int = 0,
     val isLoading: Boolean = true,
@@ -46,7 +48,8 @@ class HomeViewModel(
     private val accountRepository: AccountRepository,
     private val transferRepository: TransferRepository,
     private val notificationPreferencesStore: NotificationPreferencesStore? = null,
-    private val profilePhotoStore: ProfilePhotoStore? = null
+    private val profilePhotoStore: ProfilePhotoStore? = null,
+    private val biometricCredentialStore: BiometricCredentialStore? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(
@@ -55,6 +58,7 @@ class HomeViewModel(
             notificationPreferences = authRepository.session.value?.user?.id
                 ?.let { notificationPreferencesStore?.load(it) }
                 ?: NotificationPreferences(),
+            biometricEnabled = biometricCredentialStore?.isEnabled() == true,
             photoPath = authRepository.session.value?.user?.id?.let { profilePhotoStore?.getPhotoPath(it) },
             photoVersion = profilePhotoStore?.photoUpdates?.value ?: 0
         )
@@ -116,6 +120,35 @@ class HomeViewModel(
     }
 
     fun toggleBalanceVisibility() = _uiState.update { it.copy(isBalanceVisible = !it.isBalanceVisible) }
+
+    fun disableBiometricLogin() {
+        biometricCredentialStore?.clear()
+        _uiState.update { it.copy(biometricEnabled = false, message = "Entrada por biometria desativada.") }
+    }
+
+    fun enableBiometricLogin(password: String, onDone: (error: String?) -> Unit) {
+        val user = _uiState.value.user
+        if (user == null || password.isEmpty()) {
+            onDone("Informe sua senha atual para ativar a biometria.")
+            return
+        }
+        viewModelScope.launch {
+            authRepository.login(user.email, password)
+                .onSuccess { updatedUser ->
+                    biometricCredentialStore?.save(updatedUser.email, password, updatedUser.name)
+                    _uiState.update {
+                        it.copy(
+                            biometricEnabled = biometricCredentialStore?.isEnabled() == true,
+                            message = "Entrada por biometria ativada!"
+                        )
+                    }
+                    onDone(null)
+                }
+                .onFailure { e ->
+                    onDone(e.message ?: "Senha incorreta.")
+                }
+        }
+    }
 
     fun setSmsNotifications(enabled: Boolean) = updateNotificationPreferences { copy(smsEnabled = enabled) }
 
@@ -193,7 +226,8 @@ class HomeViewModel(
                     accountRepository = c.accountRepository,
                     transferRepository = c.transferRepository,
                     notificationPreferencesStore = c.notificationPreferencesStore,
-                    profilePhotoStore = c.profilePhotoStore
+                    profilePhotoStore = c.profilePhotoStore,
+                    biometricCredentialStore = c.biometricCredentialStore
                 )
             }
         }
