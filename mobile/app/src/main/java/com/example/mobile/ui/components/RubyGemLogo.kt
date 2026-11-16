@@ -4,10 +4,12 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -21,7 +23,7 @@ import androidx.compose.ui.unit.sp
 import com.example.mobile.R
 
 /**
- * Displays the RuBank monogram logo (bright crimson squircle with interlocking white/rose 'ru' ribbon).
+ * Displays the RuBank monogram logo (faceted ruby 'ru' mark v2).
  */
 @Composable
 fun RubyGemIcon(
@@ -29,10 +31,12 @@ fun RubyGemIcon(
     size: Dp = 36.dp
 ) {
     Image(
-        painter = painterResource(id = R.drawable.ic_ruby_gem),
+        painter = painterResource(id = R.drawable.ic_rubank_logo_v2),
         contentDescription = "RuBank Logo",
-        contentScale = ContentScale.Fit,
-        modifier = modifier.size(size)
+        contentScale = ContentScale.Crop,
+        modifier = modifier
+            .size(size)
+            .clip(RoundedCornerShape(percent = 24))
     )
 }
 

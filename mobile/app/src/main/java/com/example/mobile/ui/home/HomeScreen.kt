@@ -26,15 +26,16 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.AddCircleOutline
-import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.PersonOutline
 import androidx.compose.material.icons.filled.Pix
+import androidx.compose.material.icons.filled.QrCode2
+import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material.icons.filled.ShoppingBag
+import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.outlined.VerifiedUser
@@ -53,6 +54,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -88,9 +91,9 @@ import com.example.mobile.util.toBrl
 @Composable
 fun HomeScreen(
     onOpenPixHub: (Long, String) -> Unit,
-    onOpenPixKeys: (Long) -> Unit,
     onOpenTransfer: (Long, String) -> Unit,
     onOpenSummary: (Long) -> Unit,
+    onOpenUnderDevelopment: (String) -> Unit,
     viewModelKey: String,
     viewModel: HomeViewModel = viewModel(key = viewModelKey, factory = HomeViewModel.Factory)
 ) {
@@ -109,9 +112,8 @@ fun HomeScreen(
             if (selectedAccount != null) {
                 RuFloatingDock(
                     onHomeClick = viewModel::refresh,
-                    onPixClick = { onOpenPixHub(selectedAccount.id, selectedAccount.balance) },
-                    onSummaryClick = { onOpenSummary(selectedAccount.id) },
-                    onKeysClick = { onOpenPixKeys(selectedAccount.id) }
+                    onInvestmentsClick = { onOpenUnderDevelopment("Investimentos") },
+                    onShoppingClick = { onOpenUnderDevelopment("Shopping RuBank") }
                 )
             }
         }
@@ -121,25 +123,30 @@ fun HomeScreen(
             return@Scaffold
         }
 
-        Column(
+        PullToRefreshBox(
+            isRefreshing = state.isLoading,
+            onRefresh = viewModel::refresh,
             modifier = Modifier
                 .fillMaxSize()
-                .background(colors.background)
                 .padding(bottom = padding.calculateBottomPadding())
-                .verticalScroll(rememberScrollState())
         ) {
-            // Original Nubank Header (Figma Tela 1 — leftmost original screen)
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(colors.background)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                // Original Nubank Header (Figma Tela 1 — leftmost original screen)
             HomeHeroHeader(
                 userName = state.user?.name?.substringBefore(' ').orEmpty(),
                 isBalanceVisible = state.isBalanceVisible,
                 onAvatarClick = { showProfileSheet = true },
                 onToggleBalance = viewModel::toggleBalanceVisibility,
-                onRefresh = viewModel::refresh,
+                onHelpClick = { onOpenUnderDevelopment("Ajuda") },
+                onSecurityClick = { onOpenUnderDevelopment("Central de Segurança") },
+                onCaixinhasClick = { onOpenUnderDevelopment("Caixinhas") },
                 onSummaryPromoClick = {
                     selectedAccount?.let { onOpenSummary(it.id) }
-                },
-                onPixKeysPromoClick = {
-                    selectedAccount?.let { onOpenPixKeys(it.id) }
                 }
             )
 
@@ -163,57 +170,38 @@ fun HomeScreen(
                     // "Saldo em conta" section (Original Nubank Tela 1)
                     BalanceSection(
                         account = selectedAccount,
-                        balanceVisible = state.isBalanceVisible,
-                        onClick = { onOpenSummary(selectedAccount.id) }
+                        balanceVisible = state.isBalanceVisible
                     )
 
-                    // Circular Quick Actions Row (without Nova Conta / Encerrar Conta, which live in Profile)
+                    // Circular Quick Actions Row (Área Pix + Transferir shortcut + prototype placeholders)
                     QuickActionsRow(
                         enabled = selectedAccount.isActive && !state.isBusy,
                         onAreaPix = { onOpenPixHub(selectedAccount.id, selectedAccount.balance) },
                         onTransfer = { onOpenTransfer(selectedAccount.id, selectedAccount.balance) },
-                        onPixKeys = { onOpenPixKeys(selectedAccount.id) },
-                        onSummary = { onOpenSummary(selectedAccount.id) }
+                        onPay = { onOpenUnderDevelopment("Pagar") },
+                        onRecharge = { onOpenUnderDevelopment("Recarga de celular") }
                     )
 
-                    // Pill Card ("Dados da conta" — opens Profile / Account Switcher or Pix Keys)
+                    // Informational account badge (account switching/closing lives in Profile)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(16.dp))
                             .background(colors.surface)
-                            .clickable { showProfileSheet = true }
-                            .padding(horizontal = 16.dp, vertical = 16.dp),
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.AccountBalance,
-                                contentDescription = null,
-                                tint = colors.onSurface
-                            )
-                            Column {
-                                Text(
-                                    text = "Agência ${selectedAccount.agencyNumber} • Conta ${selectedAccount.accountNumber}",
-                                    color = colors.onSurface,
-                                    fontWeight = FontWeight.SemiBold,
-                                    fontSize = 14.sp
-                                )
-                                Text(
-                                    text = "Toque para alternar ou gerenciar suas contas",
-                                    color = colors.onSurfaceVariant,
-                                    fontSize = 12.sp
-                                )
-                            }
-                        }
                         Icon(
-                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            Icons.Default.AccountBalance,
                             contentDescription = null,
-                            tint = colors.onSurfaceVariant
+                            tint = colors.onSurface
+                        )
+                        Text(
+                            text = "Agência ${selectedAccount.agencyNumber} • Conta ${selectedAccount.accountNumber}",
+                            color = colors.onSurface,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp
                         )
                     }
 
@@ -221,7 +209,7 @@ fun HomeScreen(
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { onOpenSummary(selectedAccount.id) },
+                            .clickable { onOpenUnderDevelopment("Convidar amigos") },
                         shape = RoundedCornerShape(18.dp),
                         colors = CardDefaults.cardColors(containerColor = colors.surface)
                     ) {
@@ -258,21 +246,12 @@ fun HomeScreen(
                     HorizontalDivider(color = colors.outline)
 
                     // Extrato / Movimentações
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Histórico de movimentações",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = colors.onBackground,
-                            fontWeight = FontWeight.Bold
-                        )
-                        TextButton(onClick = { onOpenSummary(selectedAccount.id) }) {
-                            Text("Ver estatísticas", color = colors.primary)
-                        }
-                    }
+                    Text(
+                        text = "Histórico de movimentações",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = colors.onBackground,
+                        fontWeight = FontWeight.Bold
+                    )
 
                     if (state.statement.isEmpty()) {
                         Text(
@@ -289,6 +268,7 @@ fun HomeScreen(
                 Spacer(Modifier.height(72.dp))
             }
         }
+    }
     }
 
     // Profile & Account Management ModalBottomSheet (Criar conta, Alternar conta, Encerrar conta, Logout)
@@ -476,9 +456,10 @@ private fun HomeHeroHeader(
     isBalanceVisible: Boolean,
     onAvatarClick: () -> Unit,
     onToggleBalance: () -> Unit,
-    onRefresh: () -> Unit,
-    onSummaryPromoClick: () -> Unit,
-    onPixKeysPromoClick: () -> Unit
+    onHelpClick: () -> Unit,
+    onSecurityClick: () -> Unit,
+    onCaixinhasClick: () -> Unit,
+    onSummaryPromoClick: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -532,17 +513,17 @@ private fun HomeHeroHeader(
                         tint = Color.White
                     )
                 }
-                IconButton(onClick = onRefresh) {
+                IconButton(onClick = onHelpClick) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Outlined.HelpOutline,
-                        contentDescription = "Atualizar",
+                        contentDescription = "Ajuda",
                         tint = Color.White
                     )
                 }
-                IconButton(onClick = onAvatarClick) {
+                IconButton(onClick = onSecurityClick) {
                     Icon(
                         imageVector = Icons.Outlined.VerifiedUser,
-                        contentDescription = "Perfil e segurança",
+                        contentDescription = "Central de Segurança",
                         tint = Color.White
                     )
                 }
@@ -556,9 +537,7 @@ private fun HomeHeroHeader(
             color = Color.White,
             fontWeight = FontWeight.Bold,
             fontSize = 18.sp,
-            modifier = Modifier
-                .padding(horizontal = 20.dp)
-                .clickable(onClick = onAvatarClick)
+            modifier = Modifier.padding(horizontal = 20.dp)
         )
 
         Spacer(Modifier.height(14.dp))
@@ -577,7 +556,7 @@ private fun HomeHeroHeader(
                     .height(96.dp)
                     .clip(RoundedCornerShape(18.dp))
                     .background(Color.White.copy(alpha = 0.16f))
-                    .clickable(onClick = onPixKeysPromoClick)
+                    .clickable(onClick = onCaixinhasClick)
                     .padding(14.dp)
             ) {
                 Column(
@@ -585,13 +564,13 @@ private fun HomeHeroHeader(
                     verticalArrangement = Arrangement.SpaceBetween
                 ) {
                     Icon(
-                        Icons.Default.Key,
+                        Icons.Default.Savings,
                         contentDescription = null,
                         tint = Color.White,
                         modifier = Modifier.size(20.dp)
                     )
                     Text(
-                        text = "Confira as chaves Pix ativas na conta",
+                        text = "Conheça as Caixinhas do RuBank",
                         color = Color.White,
                         fontSize = 12.sp,
                         lineHeight = 15.sp,
@@ -642,33 +621,19 @@ private fun HomeHeroHeader(
 @Composable
 private fun BalanceSection(
     account: AccountResponse,
-    balanceVisible: Boolean,
-    onClick: () -> Unit
+    balanceVisible: Boolean
 ) {
     val colors = MaterialTheme.colorScheme
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
+        modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Saldo em conta",
-                color = colors.onBackground,
-                fontSize = 19.sp,
-                fontWeight = FontWeight.SemiBold
-            )
-            Icon(
-                Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                tint = colors.onSurfaceVariant
-            )
-        }
+        Text(
+            text = "Saldo em conta",
+            color = colors.onBackground,
+            fontSize = 19.sp,
+            fontWeight = FontWeight.SemiBold
+        )
         Text(
             text = if (balanceVisible) account.balance.toBrl() else "••••",
             color = colors.onBackground,
@@ -691,8 +656,8 @@ private fun QuickActionsRow(
     enabled: Boolean,
     onAreaPix: () -> Unit,
     onTransfer: () -> Unit,
-    onPixKeys: () -> Unit,
-    onSummary: () -> Unit
+    onPay: () -> Unit,
+    onRecharge: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -702,7 +667,7 @@ private fun QuickActionsRow(
     ) {
         CircularActionItem(
             icon = Icons.Default.Pix,
-            label = "Área Pix e\nTransferir",
+            label = "Área Pix",
             enabled = enabled,
             onClick = onAreaPix
         )
@@ -713,16 +678,16 @@ private fun QuickActionsRow(
             onClick = onTransfer
         )
         CircularActionItem(
-            icon = Icons.Default.Key,
-            label = "Minhas\nchaves",
-            enabled = enabled,
-            onClick = onPixKeys
+            icon = Icons.Default.QrCode2,
+            label = "Pagar",
+            enabled = true,
+            onClick = onPay
         )
         CircularActionItem(
-            icon = Icons.Default.Analytics,
-            label = "Resumo\nmensal",
+            icon = Icons.Default.Smartphone,
+            label = "Recarga de\ncelular",
             enabled = true,
-            onClick = onSummary
+            onClick = onRecharge
         )
     }
 }
@@ -885,9 +850,8 @@ private fun StatementRow(entry: StatementEntry) {
 @Composable
 private fun RuFloatingDock(
     onHomeClick: () -> Unit,
-    onPixClick: () -> Unit,
-    onSummaryClick: () -> Unit,
-    onKeysClick: () -> Unit
+    onInvestmentsClick: () -> Unit,
+    onShoppingClick: () -> Unit
 ) {
     val colors = MaterialTheme.colorScheme
     Box(
@@ -918,24 +882,17 @@ private fun RuFloatingDock(
                     tint = Color.White
                 )
             }
-            IconButton(onClick = onPixClick, modifier = Modifier.size(42.dp)) {
+            IconButton(onClick = onInvestmentsClick, modifier = Modifier.size(42.dp)) {
                 Icon(
                     Icons.Default.AttachMoney,
-                    contentDescription = "Área Pix",
+                    contentDescription = "Investimentos",
                     tint = colors.onSurfaceVariant
                 )
             }
-            IconButton(onClick = onSummaryClick, modifier = Modifier.size(42.dp)) {
-                Icon(
-                    Icons.Default.Analytics,
-                    contentDescription = "Resumo Financeiro",
-                    tint = colors.onSurfaceVariant
-                )
-            }
-            IconButton(onClick = onKeysClick, modifier = Modifier.size(42.dp)) {
+            IconButton(onClick = onShoppingClick, modifier = Modifier.size(42.dp)) {
                 Icon(
                     Icons.Default.ShoppingBag,
-                    contentDescription = "Chaves Pix",
+                    contentDescription = "Shopping",
                     tint = colors.onSurfaceVariant
                 )
             }
