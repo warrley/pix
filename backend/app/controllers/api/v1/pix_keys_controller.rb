@@ -12,11 +12,14 @@ module Api
         @pix_key = @account.pix_keys.build(pix_key_params)
 
         if @pix_key.save
+          Observability::Metrics.record_pix_key_operation(operation: "create", key_type: @pix_key.key_type, status: "success")
           render_success(@pix_key, status: :created)
         else
+          Observability::Metrics.record_pix_key_operation(operation: "create", key_type: @pix_key.key_type, status: "failure")
           render_error(@pix_key.errors.to_hash)
         end
       rescue ActiveRecord::RecordNotUnique
+        Observability::Metrics.record_pix_key_operation(operation: "create", key_type: @pix_key&.key_type, status: "failure")
         render_error("Key already registered", status: :conflict, code: "pix_key.already_registered")
       end
 
@@ -27,8 +30,10 @@ module Api
 
       def destroy
         if @pix_key.cancelled!
+          Observability::Metrics.record_pix_key_operation(operation: "cancel", key_type: @pix_key.key_type, status: "success")
           head :no_content
         else
+          Observability::Metrics.record_pix_key_operation(operation: "cancel", key_type: @pix_key.key_type, status: "failure")
           render_error(@pix_key.errors.to_hash)
         end
       end

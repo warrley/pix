@@ -17,7 +17,7 @@ Rails.application.configure do
   config.force_ssl = true
   config.ssl_options = {
     hsts: { expires: 1.year, subdomains: true },
-    redirect: { exclude: ->(request) { request.path == "/up" } }
+    redirect: { exclude: ->(request) { [ "/up", "/metrics" ].include?(request.path) } }
   }
 
   # Cache assets for far-future expiry since they are all digest stamped.

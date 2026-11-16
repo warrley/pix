@@ -26,6 +26,12 @@ module ActiveSupport
     # Run tests in parallel with specified workers
     parallelize(workers: :number_of_processors)
 
+    parallelize_setup do |worker|
+      Observability::Metrics.use_store_path!(
+        Rails.root.join("tmp", "prometheus_metrics", "metrics_state_test_worker_#{worker}.json").to_s
+      )
+    end
+
     # Setup all fixtures in test/fixtures/*.yml for all tests in alphabetical order.
     fixtures :all
 

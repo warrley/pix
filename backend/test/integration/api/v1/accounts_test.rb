@@ -47,12 +47,15 @@ class Api::V1::AccountsTest < ActionDispatch::IntegrationTest
     assert_nil response.parsed_body["error"]
   end
 
-  test "DELETE /api/v1/accounts/:id closes account when balance is zero" do
+  test "DELETE /api/v1/accounts/:id closes account when balance is zero and cancels active PIX keys" do
     @account.update!(balance: 0, status: "active")
+    pix_key = PixKey.create!(account: @account, key_type: "random", status: "active")
 
     delete api_v1_account_path(@account), as: :json
 
     assert_response :no_content
+    assert_equal "closed", @account.reload.status
+    assert_equal "cancelled", pix_key.reload.status
   end
 
   test "DELETE /api/v1/accounts/:id is blocked when balance > 0" do

@@ -40,8 +40,19 @@ class TransactionNotificationJob < ApplicationJob
         begin
           delivered = notifier.notify(user, payload)
           raise Notifications::DeliveryError if delivered == false
+
+          Observability::Metrics.record_notification(
+            notifier: notifier_name(notifier),
+            event_type: event_type,
+            status: "success"
+          )
         rescue StandardError => e
           failures << notifier_name(notifier)
+          Observability::Metrics.record_notification(
+            notifier: notifier_name(notifier),
+            event_type: event_type,
+            status: "failure"
+          )
           Rails.logger.warn(
             "Transaction notification delivery failed " \
             "event=#{event_type} notifier=#{notifier_name(notifier)} " \
