@@ -1,3 +1,5 @@
+require_relative "domain_error"
+
 module Pix
   class CancelTransferService
     Result = Struct.new(:success?, :transaction, :error, keyword_init: true)

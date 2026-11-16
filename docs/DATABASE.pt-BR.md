@@ -44,10 +44,26 @@ erDiagram
         string failure_reason "preenchido se status = failed"
     }
 
+    SCHEDULED_TRANSFERS {
+        bigint id PK
+        bigint account_id FK
+        bigint destination_account_id FK "destinatário confirmado na criação"
+        string pix_key_used "snapshot da chave (máx. 77)"
+        bigint amount_cents "sempre > 0"
+        string description "opcional — máx. 140"
+        date scheduled_for "data civil, America/Sao_Paulo"
+        string status "pending | processing | executed | cancelled | failed"
+        string execution_key "única; idempotência da execução"
+        bigint transaction_id FK "nullable"
+    }
+
     USERS ||--o{ ACCOUNTS : "possui"
     ACCOUNTS ||--o{ PIX_KEYS : "possui (máx 5 ativas por regra BACEN)"
     ACCOUNTS ||--o{ TRANSACTIONS : "envia de"
     ACCOUNTS ||--o{ TRANSACTIONS : "recebe em"
+    ACCOUNTS ||--o{ SCHEDULED_TRANSFERS : "agenda"
+    ACCOUNTS ||--o{ SCHEDULED_TRANSFERS : "recebe agendamento"
+    SCHEDULED_TRANSFERS o|--o| TRANSACTIONS : "gera"
 ```
 
 ---
