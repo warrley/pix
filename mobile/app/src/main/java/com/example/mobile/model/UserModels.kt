@@ -100,6 +100,8 @@ data class StatementEntry(
     val amount: String,
     @SerialName("operation_type") val operationType: String,
     val status: String,
+    @SerialName("end_to_end_id") val endToEndId: String? = null,
+    @SerialName("pix_key_used") val pixKeyUsed: String? = null,
     @SerialName("created_at") val createdAt: String? = null,
     val counterparty: Counterparty = Counterparty()
 ) {
@@ -107,7 +109,10 @@ data class StatementEntry(
 }
 
 @Serializable
-data class Counterparty(val name: String? = null)
+data class Counterparty(
+    val name: String? = null,
+    @SerialName("doc_id") val docId: String? = null
+)
 
 @Serializable
 data class StatementResponse(val transactions: List<StatementEntry> = emptyList())

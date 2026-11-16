@@ -1,6 +1,7 @@
 package com.example.mobile
 
 import android.app.Application
+import android.content.Context
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.example.mobile.network.KtorAccountRemoteDataSource
@@ -10,7 +11,9 @@ import com.example.mobile.network.KtorPixKeyRemoteDataSource
 import com.example.mobile.network.KtorScheduledTransferRemoteDataSource
 import com.example.mobile.network.KtorTransferRemoteDataSource
 import com.example.mobile.network.KtorUserRemoteDataSource
+import com.example.mobile.network.RecentPixContactsStore
 import com.example.mobile.network.SessionStore
+import com.example.mobile.network.SharedPreferencesRecentPixContactsStore
 import com.example.mobile.repository.AccountRepository
 import com.example.mobile.repository.AuthRepository
 import com.example.mobile.repository.DefaultAccountRepository
@@ -23,9 +26,13 @@ import com.example.mobile.repository.ScheduledTransferRepository
 import com.example.mobile.repository.TransferRepository
 
 /** Manual dependency container: one HTTP client and one repository per feature. */
-class AppContainer {
+class AppContainer(context: Context) {
     private val sessionStore = SessionStore()
     private val client = KtorClient.create(sessionStore)
+
+    val recentPixContactsStore: RecentPixContactsStore by lazy {
+        SharedPreferencesRecentPixContactsStore(context)
+    }
 
     val authRepository: AuthRepository by lazy {
         DefaultAuthRepository(KtorAuthRemoteDataSource(client), sessionStore)
@@ -45,7 +52,7 @@ class AppContainer {
 }
 
 class PixApplication : Application() {
-    val container: AppContainer by lazy { AppContainer() }
+    val container: AppContainer by lazy { AppContainer(this) }
 }
 
 fun CreationExtras.container(): AppContainer =

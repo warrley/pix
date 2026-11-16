@@ -153,20 +153,17 @@ fun TransferScreen(
 
     val recipientDisplayName = state.recipient?.recipientName ?: state.pixKey
 
-    val contacts = remember(recentStatement) {
-        recentStatement
-            .mapNotNull { it.counterparty.name?.takeIf { n -> n.isNotBlank() } }
-            .distinct()
-            .map { name ->
-                val parts = name.trim().split(Regex("\\s+"))
-                val initials = ((parts.firstOrNull()?.take(1) ?: "") + (parts.getOrNull(1)?.take(1) ?: "")).uppercase()
-                ContactItem(
-                    initials = initials.ifEmpty { "RB" },
-                    name = name,
-                    subtitle = "RUBANK PAGAMENTOS S.A.",
-                    pixKey = name
-                )
-            }
+    val contacts = remember(recentStatement, state.recentContacts) {
+        viewModel.buildRecentContacts(recentStatement).map { contact ->
+            val parts = contact.name.trim().split(Regex("\\s+"))
+            val initials = ((parts.firstOrNull()?.take(1) ?: "") + (parts.getOrNull(1)?.take(1) ?: "")).uppercase()
+            ContactItem(
+                initials = initials.ifEmpty { "RB" },
+                name = contact.name,
+                subtitle = contact.pixKey,
+                pixKey = contact.pixKey
+            )
+        }
     }
 
     PixScaffold(
@@ -281,6 +278,9 @@ fun TransferScreen(
                                             .width(96.dp)
                                             .clickable {
                                                 viewModel.onPixKeyChange(contact.pixKey)
+                                                viewModel.verifyRecipientKey {
+                                                    step = 2
+                                                }
                                             }
                                     ) {
                                         Box(
@@ -334,6 +334,9 @@ fun TransferScreen(
                                         .fillMaxWidth()
                                         .clickable {
                                             viewModel.onPixKeyChange(contact.pixKey)
+                                            viewModel.verifyRecipientKey {
+                                                step = 2
+                                            }
                                         }
                                         .padding(vertical = 8.dp),
                                     verticalAlignment = Alignment.CenterVertically,
@@ -353,12 +356,21 @@ fun TransferScreen(
                                             fontSize = 13.sp
                                         )
                                     }
-                                    Text(
-                                        text = contact.name,
-                                        color = colors.onBackground,
-                                        fontWeight = FontWeight.SemiBold,
-                                        fontSize = 15.sp
-                                    )
+                                    Column {
+                                        Text(
+                                            text = contact.name,
+                                            color = colors.onBackground,
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontSize = 15.sp
+                                        )
+                                        Text(
+                                            text = contact.subtitle,
+                                            color = colors.onSurfaceVariant,
+                                            fontSize = 12.sp,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
                                 }
                                 HorizontalDivider(color = colors.outline)
                             }

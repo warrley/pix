@@ -1,10 +1,13 @@
 package com.example.mobile.ui.transfer
 
+import com.example.mobile.model.Counterparty
 import com.example.mobile.model.PixKeyLookupResponse
 import com.example.mobile.model.StatementEntry
+import com.example.mobile.model.TransferParty
 import com.example.mobile.model.TransferReceipt
 import com.example.mobile.model.TransferRequest
 import com.example.mobile.network.ApiException
+import com.example.mobile.network.InMemoryRecentPixContactsStore
 import com.example.mobile.network.NetworkException
 import com.example.mobile.repository.TransferRepository
 import kotlinx.coroutines.Dispatchers
@@ -110,5 +113,56 @@ class TransferViewModelTest {
         assertEquals("25.00", vm.uiState.value.amount)
         assertEquals("Beatriz", vm.uiState.value.recipient?.recipientName)
         assertEquals("Café", vm.uiState.value.description)
+    }
+
+    @Test fun recentContacts_usesRealPixKeyInsteadOfName() {
+        val repo = FakeRepo(
+            Result.success(
+                TransferReceipt(
+                    id = 2,
+                    amount = "15.00",
+                    status = "completed",
+                    receiver = TransferParty(accountNumber = "222", userName = "Carlos Silva")
+                )
+            )
+        )
+        val store = InMemoryRecentPixContactsStore()
+        val vm = TransferViewModel(5, repo, recentContactsStore = store, newIdempotencyKey = ::keys)
+
+        vm.onPixKeyChange("carlos@rubank.com")
+        vm.onAmountChange("15")
+        vm.submit()
+
+        val statement = listOf(
+            StatementEntry(
+                id = 10,
+                amount = "15.00",
+                operationType = "debit",
+                status = "completed",
+                counterparty = Counterparty(name = "Carlos Silva")
+            ),
+            StatementEntry(
+                id = 11,
+                amount = "99.00",
+                operationType = "debit",
+                status = "completed",
+                counterparty = Counterparty(name = "Sem Chave")
+            ),
+            StatementEntry(
+                id = 12,
+                amount = "30.00",
+                operationType = "debit",
+                status = "completed",
+                pixKeyUsed = "+5511999990000",
+                counterparty = Counterparty(name = "Ana")
+            )
+        )
+
+        val contacts = vm.buildRecentContacts(statement)
+        assertEquals(2, contacts.size)
+        assertEquals("Carlos Silva", contacts[0].name)
+        assertEquals("carlos@rubank.com", contacts[0].pixKey)
+        assertEquals("Ana", contacts[1].name)
+        assertEquals("+5511999990000", contacts[1].pixKey)
     }
 }

@@ -7,9 +7,12 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.mobile.container
 import com.example.mobile.model.PixKeyLookupResponse
+import com.example.mobile.model.StatementEntry
 import com.example.mobile.model.TransferReceipt
 import com.example.mobile.model.TransferRequest
 import com.example.mobile.network.NetworkException
+import com.example.mobile.network.RecentPixContact
+import com.example.mobile.network.RecentPixContactsStore
 import com.example.mobile.repository.PixKeyRepository
 import com.example.mobile.repository.TransferRepository
 import com.example.mobile.util.parseAmountInput
@@ -25,6 +28,7 @@ data class TransferUiState(
     val amount: String = "",
     val description: String = "",
     val recipient: PixKeyLookupResponse? = null,
+    val recentContacts: List<RecentPixContact> = emptyList(),
     val isLookingUp: Boolean = false,
     val isLoading: Boolean = false,
     val error: String? = null,
@@ -35,10 +39,13 @@ class TransferViewModel(
     private val sourceAccountId: Long,
     private val repository: TransferRepository,
     private val pixKeyRepository: PixKeyRepository? = null,
+    private val recentContactsStore: RecentPixContactsStore? = null,
     private val newIdempotencyKey: () -> String = { UUID.randomUUID().toString().replace("-", "") }
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(TransferUiState())
+    private val _uiState = MutableStateFlow(
+        TransferUiState(recentContacts = recentContactsStore?.list(sourceAccountId).orEmpty())
+    )
     val uiState: StateFlow<TransferUiState> = _uiState.asStateFlow()
 
     // One key per user intent: a retry after a network failure reuses it, so the backend
@@ -56,12 +63,36 @@ class TransferViewModel(
         description: String = ""
     ) {
         idempotencyKey = newIdempotencyKey()
+        recentContactsStore?.record(sourceAccountId, recipient.recipientName, recipient.keyValue)
         _uiState.value = TransferUiState(
             pixKey = pixKey,
             amount = amount,
             description = description,
-            recipient = recipient
+            recipient = recipient,
+            recentContacts = recentContactsStore?.list(sourceAccountId).orEmpty()
         )
+    }
+
+    fun buildRecentContacts(statement: List<StatementEntry>): List<RecentPixContact> {
+        val merged = mutableListOf<RecentPixContact>()
+        recentContactsStore?.list(sourceAccountId)?.forEach { contact ->
+            if (merged.none { it.pixKey.equals(contact.pixKey, ignoreCase = true) }) {
+                merged += contact
+            }
+        }
+        statement
+            .filter { it.isDebit }
+            .forEach { entry ->
+                val name = entry.counterparty.name?.trim().orEmpty()
+                val key = entry.pixKeyUsed?.trim()?.takeIf { it.isNotEmpty() }
+                    ?: if (name.isNotEmpty()) recentContactsStore?.keyForName(sourceAccountId, name) else null
+                if (name.isNotEmpty() && !key.isNullOrBlank() &&
+                    merged.none { it.pixKey.equals(key, ignoreCase = true) }
+                ) {
+                    merged += RecentPixContact(name = name, pixKey = key)
+                }
+            }
+        return merged
     }
 
     /**
@@ -86,11 +117,13 @@ class TransferViewModel(
         viewModelScope.launch {
             lookupRepo.lookupKey(key, sourceAccountId)
                 .onSuccess { found ->
+                    recentContactsStore?.record(sourceAccountId, found.recipientName, found.keyValue)
                     _uiState.update {
                         it.copy(
                             isLookingUp = false,
                             recipient = found,
                             pixKey = found.keyValue,
+                            recentContacts = recentContactsStore?.list(sourceAccountId).orEmpty(),
                             error = null
                         )
                     }
@@ -133,7 +166,17 @@ class TransferViewModel(
             repository.transfer(request, idempotencyKey)
                 .onSuccess { receipt ->
                     idempotencyKey = newIdempotencyKey()
-                    _uiState.update { it.copy(isLoading = false, receipt = receipt) }
+                    val name = receipt.receiver.userName.ifBlank { state.recipient?.recipientName.orEmpty() }
+                    if (name.isNotBlank()) {
+                        recentContactsStore?.record(sourceAccountId, name, request.pixKey)
+                    }
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            receipt = receipt,
+                            recentContacts = recentContactsStore?.list(sourceAccountId).orEmpty()
+                        )
+                    }
                 }
                 .onFailure { e ->
                     // The backend stores rejected transfers under their key, so only a transport
@@ -146,7 +189,9 @@ class TransferViewModel(
 
     fun startNewTransfer() {
         idempotencyKey = newIdempotencyKey()
-        _uiState.value = TransferUiState()
+        _uiState.value = TransferUiState(
+            recentContacts = recentContactsStore?.list(sourceAccountId).orEmpty()
+        )
     }
 
     private fun edit(block: TransferUiState.() -> TransferUiState) {
@@ -159,7 +204,12 @@ class TransferViewModel(
         fun factory(sourceAccountId: Long): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val c = container()
-                TransferViewModel(sourceAccountId, c.transferRepository, c.pixKeyRepository)
+                TransferViewModel(
+                    sourceAccountId = sourceAccountId,
+                    repository = c.transferRepository,
+                    pixKeyRepository = c.pixKeyRepository,
+                    recentContactsStore = c.recentPixContactsStore
+                )
             }
         }
     }
