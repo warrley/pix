@@ -118,6 +118,9 @@ data class Counterparty(
 data class StatementResponse(val transactions: List<StatementEntry> = emptyList())
 
 @Serializable
+data class RefundRequest(val reason: String)
+
+@Serializable
 data class ScheduledTransferResponse(
     val id: Long,
     @SerialName("account_id") val accountId: Long,

@@ -50,6 +50,23 @@ fun tomorrowIsoDate(nowMillis: Long = System.currentTimeMillis()): String {
     return formatter.format(cal.time)
 }
 
+fun daysAgoIsoDate(days: Int, nowMillis: Long = System.currentTimeMillis()): String {
+    val cal = Calendar.getInstance(saoPauloTz).apply {
+        timeInMillis = nowMillis
+        add(Calendar.DAY_OF_MONTH, -days)
+    }
+    val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = saoPauloTz }
+    return formatter.format(cal.time)
+}
+
+fun formatIsoTimestampToBr(isoTimestamp: String?): String {
+    val raw = isoTimestamp?.trim().orEmpty()
+    if (raw.length < 10) return raw
+    val dateBr = formatIsoDateToBr(raw.take(10))
+    val timePart = raw.drop(11).take(5)
+    return if (timePart.length == 5 && timePart[2] == ':') "$dateBr às $timePart" else dateBr
+}
+
 fun formatIsoDateToBr(isoDate: String): String {
     val clean = isoDate.trim().take(10)
     val parts = clean.split('-')

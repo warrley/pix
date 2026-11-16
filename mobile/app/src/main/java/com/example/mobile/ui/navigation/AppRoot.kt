@@ -7,6 +7,7 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mobile.ui.auth.AuthScreen
 import com.example.mobile.ui.components.UnderDevelopmentScreen
+import com.example.mobile.ui.history.TransactionHistoryScreen
 import com.example.mobile.ui.home.HomeScreen
 import com.example.mobile.ui.home.HomeViewModel
 import com.example.mobile.ui.pix.PixChargeScreen
@@ -34,6 +35,9 @@ fun AppRoot(viewModel: AppViewModel = viewModel(factory = AppViewModel.Factory))
             },
             onOpenTransfer = { accountId, balance ->
                 viewModel.navigate(Screen.Transfer(accountId, balance))
+            },
+            onOpenHistory = { accountId, balance ->
+                viewModel.navigate(Screen.TransactionHistory(accountId, balance))
             },
             onOpenSummary = { accountId ->
                 viewModel.navigate(Screen.FinancialSummary(accountId))
@@ -133,6 +137,19 @@ fun AppRoot(viewModel: AppViewModel = viewModel(factory = AppViewModel.Factory))
             FinancialSummaryScreen(
                 accountId = current.accountId,
                 homeViewModel = homeViewModel,
+                onBack = viewModel::back
+            )
+        }
+        is Screen.TransactionHistory -> {
+            val homeViewModel: HomeViewModel = viewModel(
+                key = "home-$userId",
+                factory = HomeViewModel.Factory
+            )
+            val homeState by homeViewModel.uiState.collectAsState()
+            TransactionHistoryScreen(
+                accountId = current.accountId,
+                accountBalance = homeState.selectedAccount?.balance ?: current.balance,
+                onRefreshBalance = homeViewModel::refresh,
                 onBack = viewModel::back
             )
         }

@@ -31,7 +31,16 @@ class TransferViewModelTest {
             requests += request to idempotencyKey
             return result
         }
-        override suspend fun statement(accountId: Long): Result<List<StatementEntry>> = Result.success(emptyList())
+        override suspend fun statement(
+            accountId: Long,
+            startDate: String?,
+            endDate: String?,
+            status: String?,
+            page: Int,
+            perPage: Int
+        ): Result<List<StatementEntry>> = Result.success(emptyList())
+        override suspend fun refund(transactionId: Long, reason: String): Result<TransferReceipt> =
+            Result.failure(UnsupportedOperationException())
     }
 
     private val receipt = TransferReceipt(id = 1, amount = "10.50", status = "completed")

@@ -40,6 +40,7 @@ sealed interface Screen {
         val flowId: Long = System.nanoTime()
     ) : Screen
     data class FinancialSummary(val accountId: Long) : Screen
+    data class TransactionHistory(val accountId: Long, val balance: String) : Screen
     data class UnderDevelopment(val featureName: String) : Screen
 }
 

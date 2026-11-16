@@ -77,7 +77,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mobile.model.AccountResponse
-import com.example.mobile.model.StatementEntry
 import com.example.mobile.ui.components.ErrorText
 import com.example.mobile.ui.components.LoadingBox
 import com.example.mobile.ui.components.RubyGemIcon
@@ -92,6 +91,7 @@ import com.example.mobile.util.toBrl
 fun HomeScreen(
     onOpenPixHub: (Long, String) -> Unit,
     onOpenTransfer: (Long, String) -> Unit,
+    onOpenHistory: (Long, String) -> Unit,
     onOpenSummary: (Long) -> Unit,
     onOpenUnderDevelopment: (String) -> Unit,
     viewModelKey: String,
@@ -167,10 +167,11 @@ fun HomeScreen(
                         onCreateAccount = viewModel::createAccount
                     )
                 } else {
-                    // "Saldo em conta" section (Original Nubank Tela 1)
+                    // "Saldo em conta" section — tap to open Transaction History (Nubank style)
                     BalanceSection(
                         account = selectedAccount,
-                        balanceVisible = state.isBalanceVisible
+                        balanceVisible = state.isBalanceVisible,
+                        onClick = { onOpenHistory(selectedAccount.id, selectedAccount.balance) }
                     )
 
                     // Circular Quick Actions Row (Área Pix + Transferir shortcut + prototype placeholders)
@@ -240,28 +241,6 @@ fun HomeScreen(
                                 tint = colors.primary,
                                 modifier = Modifier.size(26.dp)
                             )
-                        }
-                    }
-
-                    HorizontalDivider(color = colors.outline)
-
-                    // Extrato / Movimentações
-                    Text(
-                        text = "Histórico de movimentações",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = colors.onBackground,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    if (state.statement.isEmpty()) {
-                        Text(
-                            text = "Nenhuma movimentação registrada nesta conta ainda.",
-                            color = colors.onSurfaceVariant,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    } else {
-                        state.statement.forEach { entry ->
-                            StatementRow(entry)
                         }
                     }
                 }
@@ -621,19 +600,35 @@ private fun HomeHeroHeader(
 @Composable
 private fun BalanceSection(
     account: AccountResponse,
-    balanceVisible: Boolean
+    balanceVisible: Boolean,
+    onClick: () -> Unit
 ) {
     val colors = MaterialTheme.colorScheme
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        Text(
-            text = "Saldo em conta",
-            color = colors.onBackground,
-            fontSize = 19.sp,
-            fontWeight = FontWeight.SemiBold
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Saldo em conta",
+                color = colors.onBackground,
+                fontSize = 19.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = "Ver histórico de movimentações",
+                tint = colors.onSurfaceVariant
+            )
+        }
         Text(
             text = if (balanceVisible) account.balance.toBrl() else "••••",
             color = colors.onBackground,
@@ -789,61 +784,6 @@ private fun EmptyAccountCard(
                 Text("Criar minha primeira conta", color = Color.White, fontWeight = FontWeight.SemiBold)
             }
         }
-    }
-}
-
-@Composable
-private fun StatementRow(entry: StatementEntry) {
-    val colors = MaterialTheme.colorScheme
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 10.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.weight(1f)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(42.dp)
-                        .clip(CircleShape)
-                        .background(colors.surface),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.CompareArrows,
-                        contentDescription = null,
-                        tint = if (entry.isDebit) RuCoralRed else RuGreen,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-                Column {
-                    Text(
-                        text = if (entry.isDebit) "Transferência enviada" else "Transferência recebida",
-                        color = colors.onBackground,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 14.sp
-                    )
-                    Text(
-                        text = entry.counterparty.name ?: "Pix • ${entry.status}",
-                        color = colors.onSurfaceVariant,
-                        fontSize = 12.sp
-                    )
-                }
-            }
-            Text(
-                text = (if (entry.isDebit) "- " else "+ ") + entry.amount.toBrl(),
-                color = if (entry.isDebit) RuCoralRed else RuGreen,
-                fontWeight = FontWeight.Bold,
-                fontSize = 15.sp
-            )
-        }
-        HorizontalDivider(color = colors.outline)
     }
 }
 
