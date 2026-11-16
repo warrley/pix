@@ -6,6 +6,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mobile.ui.auth.AuthScreen
+import com.example.mobile.ui.components.UnderDevelopmentScreen
 import com.example.mobile.ui.home.HomeScreen
 import com.example.mobile.ui.home.HomeViewModel
 import com.example.mobile.ui.pix.PixHubScreen
@@ -27,14 +28,14 @@ fun AppRoot(viewModel: AppViewModel = viewModel(factory = AppViewModel.Factory))
             onOpenPixHub = { accountId, balance ->
                 viewModel.navigate(Screen.PixHub(accountId, balance))
             },
-            onOpenPixKeys = { accountId ->
-                viewModel.navigate(Screen.PixKeys(accountId))
-            },
             onOpenTransfer = { accountId, balance ->
                 viewModel.navigate(Screen.Transfer(accountId, balance))
             },
             onOpenSummary = { accountId ->
                 viewModel.navigate(Screen.FinancialSummary(accountId))
+            },
+            onOpenUnderDevelopment = { feature ->
+                viewModel.navigate(Screen.UnderDevelopment(feature))
             }
         )
         is Screen.PixHub -> PixHubScreen(
@@ -51,6 +52,9 @@ fun AppRoot(viewModel: AppViewModel = viewModel(factory = AppViewModel.Factory))
             },
             onOpenPixKeys = {
                 viewModel.navigate(Screen.PixKeys(current.accountId))
+            },
+            onOpenUnderDevelopment = { feature ->
+                viewModel.navigate(Screen.UnderDevelopment(feature))
             }
         )
         is Screen.PixKeys -> PixKeysScreen(current.accountId, onBack = viewModel::back)
@@ -80,5 +84,9 @@ fun AppRoot(viewModel: AppViewModel = viewModel(factory = AppViewModel.Factory))
                 onBack = viewModel::back
             )
         }
+        is Screen.UnderDevelopment -> UnderDevelopmentScreen(
+            featureName = current.featureName,
+            onBack = viewModel::back
+        )
     }
 }

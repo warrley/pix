@@ -29,6 +29,7 @@ sealed interface Screen {
         val initialAmount: String = ""
     ) : Screen
     data class FinancialSummary(val accountId: Long) : Screen
+    data class UnderDevelopment(val featureName: String) : Screen
 }
 
 /** Owns the navigation state; the session decides between the auth flow and the app. */
@@ -39,30 +40,36 @@ class AppViewModel(authRepository: AuthRepository) : ViewModel() {
         .map { it?.user?.id }
         .stateIn(viewModelScope, SharingStarted.Eagerly, authRepository.session.value?.user?.id)
 
-    private val _screen = MutableStateFlow<Screen>(
+    private val backStack = mutableListOf<Screen>(
         if (authRepository.session.value != null) Screen.Home else Screen.Login
     )
+
+    private val _screen = MutableStateFlow(backStack.last())
     val screen: StateFlow<Screen> = _screen.asStateFlow()
 
     init {
         authRepository.session
             .map { it != null }
             .distinctUntilChanged()
-            .onEach { loggedIn -> _screen.value = if (loggedIn) Screen.Home else Screen.Login }
+            .onEach { loggedIn ->
+                val root = if (loggedIn) Screen.Home else Screen.Login
+                backStack.clear()
+                backStack.add(root)
+                _screen.value = root
+            }
             .launchIn(viewModelScope)
     }
 
     fun navigate(screen: Screen) {
+        if (backStack.lastOrNull() == screen) return
+        backStack.add(screen)
         _screen.value = screen
     }
 
     fun back() {
-        when (val current = _screen.value) {
-            Screen.Login, Screen.Home -> Unit
-            is Screen.Transfer -> _screen.value = Screen.Home
-            is Screen.PixKeys -> _screen.value = Screen.Home
-            is Screen.PixHub -> _screen.value = Screen.Home
-            is Screen.FinancialSummary -> _screen.value = Screen.Home
+        if (backStack.size > 1) {
+            backStack.removeAt(backStack.lastIndex)
+            _screen.value = backStack.last()
         }
     }
 

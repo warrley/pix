@@ -12,12 +12,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,18 +36,17 @@ import com.example.mobile.ui.components.PixScaffold
 import com.example.mobile.ui.components.RubyGemIcon
 import com.example.mobile.ui.components.ScreenColumn
 import com.example.mobile.ui.home.HomeViewModel
-import com.example.mobile.ui.theme.RuBlue
 import com.example.mobile.ui.theme.RuCoralRed
 import com.example.mobile.ui.theme.RuGreen
-import com.example.mobile.ui.theme.RuWarning
 import com.example.mobile.util.toBrl
 import java.math.BigDecimal
+import kotlin.math.roundToInt
 
 /**
- * Resumo Financeiro Mensal — Pure statistics and charts (no chat interface):
- * - KPI Summary cards (Entradas, Saídas, Saldo em Conta, Total de Transações)
- * - Comparative stacked column chart (Saldo, Saídas, Entradas)
- * - Speedometer financial health gauge arc + transaction breakdown
+ * Resumo Financeiro Mensal — Concise statistics & proportional charts with zero redundancy:
+ * - Account header with current balance
+ * - Entradas vs Saídas proportional breakdown bar + totals
+ * - Real data-driven flow gauge (net result + transaction count)
  */
 @Composable
 fun FinancialSummaryScreen(
@@ -70,18 +67,25 @@ fun FinancialSummaryScreen(
         .fold(BigDecimal.ZERO) { acc, tx -> acc + (tx.amount.toBigDecimalOrNull() ?: BigDecimal.ZERO) }
 
     val balance = account?.balanceAmount ?: BigDecimal.ZERO
-    val totalFlow = (balance + credits + debits).coerceAtLeast(BigDecimal.ONE)
+    val netFlow = credits - debits
+    val totalMoved = credits + debits
+    val hasMovement = totalMoved > BigDecimal.ZERO
 
-    val balanceFraction = (balance.toFloat() / totalFlow.toFloat()).coerceIn(0.08f, 0.70f)
-    val debitFraction = (debits.toFloat() / totalFlow.toFloat()).coerceIn(0.08f, 0.70f)
-    val creditFraction = (credits.toFloat() / totalFlow.toFloat()).coerceIn(0.08f, 0.70f)
+    val creditRatio = if (hasMovement) {
+        (credits.toFloat() / totalMoved.toFloat()).coerceIn(0f, 1f)
+    } else {
+        0.5f
+    }
+    val debitRatio = 1f - creditRatio
+    val creditPct = (creditRatio * 100f).roundToInt()
+    val debitPct = 100 - creditPct
 
     val incomingCount = homeState.statement.count { !it.isDebit }
     val outgoingCount = homeState.statement.count { it.isDebit }
 
     PixScaffold(title = "Resumo Financeiro", onBack = onBack) { padding ->
         ScreenColumn(padding) {
-            // Top Header Badge
+            // Account header + current balance (shown once)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -90,39 +94,21 @@ fun FinancialSummaryScreen(
                 RubyGemIcon(size = 36.dp)
                 Column {
                     Text(
-                        text = "Estatísticas da Conta ${account?.accountNumber.orEmpty()}",
-                        color = colors.onBackground,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.ExtraBold
+                        text = "Conta ${account?.accountNumber.orEmpty()}",
+                        color = colors.onSurfaceVariant,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium
                     )
                     Text(
-                        text = "Análise consolidada de entradas, saídas e saldo",
-                        color = colors.onSurfaceVariant,
-                        fontSize = 13.sp
+                        text = "Saldo atual: ${balance.toBrl()}",
+                        color = colors.onBackground,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.ExtraBold
                     )
                 }
             }
 
-            // KPI Cards Row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                KpiStatCard(
-                    title = "Entradas ($incomingCount)",
-                    value = credits.toBrl(),
-                    accentColor = RuGreen,
-                    modifier = Modifier.weight(1f)
-                )
-                KpiStatCard(
-                    title = "Saídas ($outgoingCount)",
-                    value = debits.toBrl(),
-                    accentColor = RuCoralRed,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            // Comparative Bar Chart Card
+            // Card 1: Entradas vs Saídas (single place for totals & proportional bar)
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
@@ -135,91 +121,63 @@ fun FinancialSummaryScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Text(
-                        text = "Distribuição Financeira",
+                        text = "Entradas e saídas",
                         color = colors.onSurface,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold
                     )
 
                     Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        SummaryMetricColumn(
+                            dotColor = RuGreen,
+                            title = "Entradas ($incomingCount)",
+                            amount = credits.toBrl(),
+                            shareLabel = if (hasMovement) "$creditPct%" else "0%",
+                            modifier = Modifier.weight(1f)
+                        )
+                        SummaryMetricColumn(
+                            dotColor = RuCoralRed,
+                            title = "Saídas ($outgoingCount)",
+                            amount = debits.toBrl(),
+                            shareLabel = if (hasMovement) "$debitPct%" else "0%",
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    // Proportional horizontal bar
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(190.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                            .height(14.dp)
+                            .clip(RoundedCornerShape(50))
+                            .background(colors.outline.copy(alpha = 0.35f))
                     ) {
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(16.dp),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            LegendMetric(
-                                color = RuGreen,
-                                label = "Saldo atual",
-                                value = balance.toBrl()
-                            )
-                            LegendMetric(
-                                color = RuCoralRed,
-                                label = "Total de saídas",
-                                value = debits.toBrl()
-                            )
-                            LegendMetric(
-                                color = RuBlue,
-                                label = "Total de entradas",
-                                value = credits.toBrl()
-                            )
-                        }
-
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.SpaceBetween,
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .padding(horizontal = 16.dp)
-                        ) {
-                            Text(
-                                text = (balance + credits).toBrl(),
-                                color = colors.onSurface,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Column(
-                                modifier = Modifier
-                                    .width(38.dp)
-                                    .weight(1f)
-                                    .padding(vertical = 4.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                            ) {
+                        if (hasMovement) {
+                            if (creditRatio > 0f) {
                                 Box(
                                     modifier = Modifier
-                                        .fillMaxWidth()
-                                        .weight(balanceFraction)
+                                        .weight(creditRatio.coerceAtLeast(0.02f))
+                                        .fillMaxHeight()
                                         .background(RuGreen)
                                 )
+                            }
+                            if (debitRatio > 0f) {
                                 Box(
                                     modifier = Modifier
-                                        .fillMaxWidth()
-                                        .weight(debitFraction)
+                                        .weight(debitRatio.coerceAtLeast(0.02f))
+                                        .fillMaxHeight()
                                         .background(RuCoralRed)
                                 )
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .weight(creditFraction)
-                                        .background(RuBlue)
-                                )
                             }
-                            Text(
-                                text = "R$ 0",
-                                color = colors.onSurfaceVariant,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
-                            )
                         }
                     }
                 }
             }
 
-            // Speedometer Gauge Card
+            // Card 2: Proportional Flow Gauge (net result & transaction count)
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
@@ -233,110 +191,81 @@ fun FinancialSummaryScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "Termômetro de Movimentações",
+                        text = "Balanço do período",
                         color = colors.onSurface,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        CategoryDot(color = RuGreen, label = "Saldo")
-                        CategoryDot(color = RuCoralRed, label = "Saídas Pix")
-                        CategoryDot(color = RuWarning, label = "Entradas Pix")
-                    }
-
-                    Spacer(Modifier.height(4.dp))
-
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(120.dp),
+                            .height(130.dp),
                         contentAlignment = Alignment.BottomCenter
                     ) {
-                        Canvas(modifier = Modifier.size(200.dp, 110.dp)) {
-                            val strokeWidth = 28.dp.toPx()
-                            val arcSize = Size(size.width - strokeWidth, (size.height - strokeWidth / 2) * 1.8f)
+                        val emptyArcColor = colors.outline
+                        Canvas(modifier = Modifier.size(210.dp, 115.dp)) {
+                            val strokeWidth = 24.dp.toPx()
+                            val arcSize = Size(
+                                size.width - strokeWidth,
+                                (size.height - strokeWidth / 2) * 1.8f
+                            )
                             val topLeft = Offset(strokeWidth / 2, strokeWidth / 2)
 
-                            drawArc(
-                                color = RuGreen,
-                                startAngle = 180f,
-                                sweepAngle = 60f,
-                                useCenter = false,
-                                topLeft = topLeft,
-                                size = arcSize,
-                                style = Stroke(width = strokeWidth, cap = StrokeCap.Butt)
-                            )
-                            drawArc(
-                                color = RuCoralRed,
-                                startAngle = 240f,
-                                sweepAngle = 60f,
-                                useCenter = false,
-                                topLeft = topLeft,
-                                size = arcSize,
-                                style = Stroke(width = strokeWidth, cap = StrokeCap.Butt)
-                            )
-                            drawArc(
-                                color = RuWarning,
-                                startAngle = 300f,
-                                sweepAngle = 60f,
-                                useCenter = false,
-                                topLeft = topLeft,
-                                size = arcSize,
-                                style = Stroke(width = strokeWidth, cap = StrokeCap.Butt)
-                            )
-                        }
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = "${homeState.statement.size} movimentações",
-                                color = colors.onSurface,
-                                fontWeight = FontWeight.ExtraBold,
-                                fontSize = 16.sp
-                            )
-                            Text(
-                                text = "Saldo líquido: ${balance.toBrl()}",
-                                color = colors.primary,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                    }
-
-                    if (homeState.statement.isNotEmpty()) {
-                        HorizontalDivider(color = colors.outline)
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                text = "Maiores movimentações recentes",
-                                color = colors.onSurfaceVariant,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            homeState.statement.take(4).forEach { tx ->
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(
-                                        text = tx.counterparty.name ?: "Transferência Pix",
-                                        color = colors.onSurface,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Medium
+                            if (!hasMovement) {
+                                drawArc(
+                                    color = emptyArcColor,
+                                    startAngle = 180f,
+                                    sweepAngle = 180f,
+                                    useCenter = false,
+                                    topLeft = topLeft,
+                                    size = arcSize,
+                                    style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+                                )
+                            } else {
+                                val creditSweep = 180f * creditRatio
+                                val debitSweep = 180f - creditSweep
+                                if (creditSweep > 0f) {
+                                    drawArc(
+                                        color = RuGreen,
+                                        startAngle = 180f,
+                                        sweepAngle = creditSweep,
+                                        useCenter = false,
+                                        topLeft = topLeft,
+                                        size = arcSize,
+                                        style = Stroke(width = strokeWidth, cap = StrokeCap.Butt)
                                     )
-                                    Text(
-                                        text = (if (tx.isDebit) "- " else "+ ") + tx.amount.toBrl(),
-                                        color = if (tx.isDebit) RuCoralRed else RuGreen,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold
+                                }
+                                if (debitSweep > 0f) {
+                                    drawArc(
+                                        color = RuCoralRed,
+                                        startAngle = 180f + creditSweep,
+                                        sweepAngle = debitSweep,
+                                        useCenter = false,
+                                        topLeft = topLeft,
+                                        size = arcSize,
+                                        style = Stroke(width = strokeWidth, cap = StrokeCap.Butt)
                                     )
                                 }
                             }
+                        }
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            val netPrefix = if (netFlow >= BigDecimal.ZERO) "+ " else "- "
+                            val netColor = if (netFlow >= BigDecimal.ZERO) RuGreen else RuCoralRed
+                            Text(
+                                text = netPrefix + netFlow.abs().toBrl(),
+                                color = if (hasMovement) netColor else colors.onSurfaceVariant,
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 18.sp
+                            )
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                text = "${homeState.statement.size} movimentações",
+                                color = colors.onSurfaceVariant,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            )
                         }
                     }
                 }
@@ -346,90 +275,45 @@ fun FinancialSummaryScreen(
 }
 
 @Composable
-private fun KpiStatCard(
+private fun SummaryMetricColumn(
+    dotColor: Color,
     title: String,
-    value: String,
-    accentColor: Color,
+    amount: String,
+    shareLabel: String,
     modifier: Modifier = Modifier
 ) {
     val colors = MaterialTheme.colorScheme
-    Card(
+    Column(
         modifier = modifier,
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = colors.surface)
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(dotColor)
+            )
             Text(
                 text = title,
                 color = colors.onSurfaceVariant,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium
             )
-            Text(
-                text = value,
-                color = accentColor,
-                fontSize = 17.sp,
-                fontWeight = FontWeight.ExtraBold
-            )
         }
-    }
-}
-
-@Composable
-private fun LegendMetric(
-    color: Color,
-    label: String,
-    value: String
-) {
-    val colors = MaterialTheme.colorScheme
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(14.dp)
-                .clip(RoundedCornerShape(3.dp))
-                .background(color)
-        )
-        Column {
-            Text(
-                text = label,
-                color = colors.onSurface,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = value,
-                color = colors.onSurfaceVariant,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold
-            )
-        }
-    }
-}
-
-@Composable
-private fun CategoryDot(color: Color, label: String) {
-    val colors = MaterialTheme.colorScheme
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(12.dp)
-                .clip(CircleShape)
-                .background(color)
+        Text(
+            text = amount,
+            color = colors.onSurface,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold
         )
         Text(
-            text = label,
-            color = colors.onSurface,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Medium
+            text = "$shareLabel do fluxo",
+            color = colors.onSurfaceVariant,
+            fontSize = 11.sp
         )
     }
 }

@@ -3,6 +3,7 @@ package com.example.mobile.ui.pix
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,15 +14,19 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.CompareArrows
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -54,7 +59,8 @@ import com.example.mobile.ui.components.ScreenColumn
 fun PixHubScreen(
     onBack: () -> Unit,
     onOpenTransfer: (initialKey: String, initialAmount: String) -> Unit,
-    onOpenPixKeys: () -> Unit
+    onOpenPixKeys: () -> Unit,
+    onOpenUnderDevelopment: (String) -> Unit
 ) {
     var smartInput by remember { mutableStateOf("") }
     val colors = MaterialTheme.colorScheme
@@ -122,10 +128,12 @@ fun PixHubScreen(
 
             Spacer(Modifier.height(4.dp))
 
-            // Clean row with only the real implemented actions
+            // Prototype action row: only Transferir is live; others go to Under Development
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 PixGridButton(
                     icon = Icons.AutoMirrored.Filled.CompareArrows,
@@ -135,17 +143,22 @@ fun PixHubScreen(
                 PixGridButton(
                     icon = Icons.Default.CalendarToday,
                     label = "Programar",
-                    onClick = { onOpenTransfer("", "") }
+                    onClick = { onOpenUnderDevelopment("Programar Pix") }
                 )
                 PixGridButton(
                     icon = Icons.Default.ContentCopy,
                     label = "Pix Copia\ne Cola",
-                    onClick = { onOpenTransfer("", "") }
+                    onClick = { onOpenUnderDevelopment("Pix Copia e Cola") }
                 )
                 PixGridButton(
-                    icon = Icons.Default.Key,
-                    label = "Minhas\nchaves",
-                    onClick = onOpenPixKeys
+                    icon = Icons.Default.QrCodeScanner,
+                    label = "Ler QR\ncode",
+                    onClick = { onOpenUnderDevelopment("Ler QR code") }
+                )
+                PixGridButton(
+                    icon = Icons.Default.AttachMoney,
+                    label = "Cobrar",
+                    onClick = { onOpenUnderDevelopment("Cobrar") }
                 )
             }
 
@@ -183,6 +196,42 @@ fun PixHubScreen(
                         )
                         Text(
                             text = "Cadastre CPF, CNPJ, e-mail, celular ou chave aleatória",
+                            color = colors.onSurfaceVariant,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+                Icon(
+                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = colors.onSurfaceVariant
+                )
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(colors.surface)
+                    .clickable { onOpenUnderDevelopment("Configurar Pix") }
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(Icons.Default.Tune, contentDescription = null, tint = colors.onSurface)
+                    Column {
+                        Text(
+                            text = "Configurar Pix",
+                            color = colors.onSurface,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp
+                        )
+                        Text(
+                            text = "Gerencie seu limite diário e noturno",
                             color = colors.onSurfaceVariant,
                             fontSize = 12.sp
                         )
