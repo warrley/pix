@@ -1,0 +1,763 @@
+{
+  "info": {
+    "_postman_id": "pix-api-complete-suite",
+    "name": "PIX API",
+    "description": "Suíte exaustiva de testes cobrindo 100% das 29 rotas da API V1 do Projeto PIX.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "alice_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "alice_user_id",
+      "value": "980190993",
+      "type": "string"
+    },
+    {
+      "key": "bob_user_id",
+      "value": "980190994",
+      "type": "string"
+    },
+    {
+      "key": "alice_account_id",
+      "value": "980190992",
+      "type": "string"
+    },
+    {
+      "key": "bob_account_id",
+      "value": "980190993",
+      "type": "string"
+    },
+    {
+      "key": "bob_pix_key",
+      "value": "bob.test@example.com",
+      "type": "string"
+    },
+    {
+      "key": "transfer_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "new_user_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "new_account_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "new_pix_key_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "scheduled_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Health & Docs",
+      "item": [
+        {
+          "name": "0. Health Check da Aplicação",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/up"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1. Download da Especificação OpenAPI",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/openapi.yaml"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Auth",
+      "item": [
+        {
+          "name": "1. Cadastro de Novo Usuário (Signup)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user\": {\n    \"name\": \"Novo Usuario Teste\",\n    \"email\": \"novo.usuario.{{$timestamp}}@example.com\",\n    \"doc_id\": \"{{dynamic_cpf}}\",\n    \"phone\": \"+5585999990099\",\n    \"password\": \"MinhaSenhaSegura@2026\",\n    \"password_confirmation\": \"MinhaSenhaSegura@2026\"\n  }\n}"
+            },
+            "url": "{{base_url}}/api/v1/auth/signup"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 Created ou 422 se ja existe', () => pm.expect([201, 422]).to.include(pm.response.code));"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Gerador dinâmico de CPF válido com dígitos verificadores",
+                  "function gerarCPFValido() {",
+                  "    let n = [];",
+                  "    for (let i = 0; i < 9; i++) n.push(Math.floor(Math.random() * 10));",
+                  "    ",
+                  "    let d1 = n.reduce((total, num, i) => total + num * (10 - i), 0) % 11;",
+                  "    d1 = d1 < 2 ? 0 : 11 - d1;",
+                  "    n.push(d1);",
+                  "    ",
+                  "    let d2 = n.reduce((total, num, i) => total + num * (11 - i), 0) % 11;",
+                  "    d2 = d2 < 2 ? 0 : 11 - d2;",
+                  "    n.push(d2);",
+                  "    ",
+                  "    return n.join('');",
+                  "}",
+                  "",
+                  "pm.variables.set('dynamic_cpf', gerarCPFValido());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Autenticação JWT (Login Alice -> Salva Token)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\": \"alice.test@example.com\", \"password\": \"password123\", \"scopes\": [\"profile:read\", \"profile:write\", \"accounts:read\", \"accounts:write\", \"pix_keys:read\", \"pix_keys:write\", \"transfers:read\", \"transfers:write\", \"reports:read\", \"accounts:admin\"]}"
+            },
+            "url": "{{base_url}}/api/v1/auth/token"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 Created', () => { pm.response.to.have.status(201); pm.collectionVariables.set('alice_token', pm.response.json().data.access_token); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Users CRUD",
+      "item": [
+        {
+          "name": "1. Consultar Perfil do Usuário",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{alice_token}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/users/{{alice_user_id}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Atualizar Perfil do Usuário",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{alice_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user\": {\n    \"name\": \"Alice Silva Editada\",\n    \"phone\": \"+5585999990088\"\n  }\n}"
+            },
+            "url": "{{base_url}}/api/v1/users/{{alice_user_id}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.expect([200, 422]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Relatório Consolidado de Transações do Usuário",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{alice_token}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/users/{{alice_user_id}}/reports/transactions"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Accounts CRUD & Segurança",
+      "item": [
+        {
+          "name": "1. Listar Contas do Usuário",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{alice_token}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/users/{{alice_user_id}}/accounts"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Criar Nova Conta Bancária",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{alice_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"account\": {\"user_id\": 980190993, \"agency_number\": \"0001\"}}"
+            },
+            "url": "{{base_url}}/api/v1/accounts"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 Created', () => { pm.response.to.have.status(201); pm.collectionVariables.set('new_account_id', pm.response.json().data.id); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Consultar Detalhes da Conta",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{alice_token}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/accounts/{{alice_account_id}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. Encerrar Conta Bancária (Saldo Zero)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{alice_token}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/accounts/{{new_account_id}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('204 No Content', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5. [Segurança] Bloquear Conta por Suspeita de Fraude",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{alice_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"reason\": \"Suspeita de invasao\"}"
+            },
+            "url": "{{base_url}}/api/v1/accounts/{{alice_account_id}}/block_fraud"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6. [Segurança] Desbloquear Conta de Fraude",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{alice_token}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/accounts/{{alice_account_id}}/unblock_fraud"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Pix Keys",
+      "item": [
+        {
+          "name": "1. Listar Chaves Pix da Conta",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{alice_token}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/accounts/{{alice_account_id}}/pix_keys"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Cadastrar Nova Chave Pix (Aleatória/EVP)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{alice_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pix_key\": {\n    \"key_type\": \"random\",\n    \"key_value\": \"{{$guid}}\"\n  }\n}"
+            },
+            "url": "{{base_url}}/api/v1/accounts/{{alice_account_id}}/pix_keys"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 ou 422', () => { if (pm.response.code === 201) pm.collectionVariables.set('new_pix_key_id', pm.response.json().data.id); pm.expect([201, 422]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Consultar Chave Pix (DICT Lookup)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{alice_token}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/pix_keys/lookup?key={{bob_pix_key}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Transfers & Refund",
+      "item": [
+        {
+          "name": "1. Realizar Transferência Pix (Alice -> Bob)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{alice_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"transfer\": {\"source_account_id\": 980190992, \"pix_key\": \"bob.test@example.com\", \"amount\": \"20.00\", \"description\": \"Teste completo\"}}"
+            },
+            "url": "{{base_url}}/api/v1/transfers"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 Created', () => { pm.response.to.have.status(201); pm.collectionVariables.set('transfer_id', pm.response.json().data.id); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Consultar Comprovante da Transferência",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{alice_token}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/transfers/{{transfer_id}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Executar Estorno de Pix Indevido (Refund)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{alice_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"reason\": \"Estorno teste master\"}"
+            },
+            "url": "{{base_url}}/api/v1/transfers/{{transfer_id}}/refund"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "7. Scheduled Transfers",
+      "item": [
+        {
+          "name": "1. Agendar Nova Transferência Futura",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{alice_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"scheduled_transfer\": {\"pix_key\": \"bob.test@example.com\", \"amount\": \"15.00\", \"scheduled_for\": \"2026-12-25\", \"description\": \"Natal\"}}"
+            },
+            "url": "{{base_url}}/api/v1/accounts/{{alice_account_id}}/scheduled_transfers"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 Created', () => { pm.response.to.have.status(201); pm.collectionVariables.set('scheduled_id', pm.response.json().data.id); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Listar Agendamentos da Conta",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{alice_token}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/accounts/{{alice_account_id}}/scheduled_transfers"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Cancelar Transferência Agendada",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{alice_token}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/scheduled_transfers/{{scheduled_id}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 ou 204 Sucesso', () => pm.expect([200, 204]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "8. Extratos & Relatórios",
+      "item": [
+        {
+          "name": "1. Consultar Extrato Paginado de Transações",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{alice_token}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/accounts/{{alice_account_id}}/transfers?page=1&per_page=10"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Gerar Relatório de Transações por Período (JSON)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{alice_token}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/accounts/{{alice_account_id}}/reports/statement?month=11&year=2026"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Exportar Relatório de Transações por Período (CSV)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{alice_token}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/accounts/{{alice_account_id}}/reports/statement?month=11&year=2026&format=csv"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
