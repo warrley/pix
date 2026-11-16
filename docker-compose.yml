@@ -1,6 +1,7 @@
 services:
   db:
     image: postgres:15
+    restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB:-backend_development}"]
       interval: 5s
@@ -16,7 +17,11 @@ services:
       - "${DB_PORT_BINDING:-5433:5432}"
 
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      args:
+        BUNDLE_WITHOUT: ""
+    restart: unless-stopped
     entrypoint: []
     command: bash -c "rm -f tmp/pids/server.pid && bundle exec rails db:prepare && bundle exec rails s -p 3000 -b '0.0.0.0'"
     volumes:
@@ -25,11 +30,12 @@ services:
       - "${BACKEND_PORT_BINDING:-3000:3000}"
     environment:
       RAILS_ENV: ${RAILS_ENV:-development}
+      BUNDLE_PATH: /usr/local/bundle
+      BUNDLE_WITHOUT: ""
       DB_HOST: ${DB_HOST:-db}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB:-backend_development}
-      DATABASE_URL: ${DATABASE_URL:-postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-backend_development}}
       SECRET_KEY_BASE: ${SECRET_KEY_BASE}
       RAILS_MASTER_KEY: ${RAILS_MASTER_KEY:-}
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:-pix.warley.xyz,localhost,127.0.0.1}

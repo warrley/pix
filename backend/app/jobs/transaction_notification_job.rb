@@ -1,7 +1,7 @@
 class TransactionNotificationJob < ApplicationJob
   queue_as :default
 
-  SUPPORTED_EVENTS = %w[completed failed cancelled].freeze
+  SUPPORTED_EVENTS = %w[completed failed cancelled refunded].freeze
   NOTIFIERS = [
     Notifications::LoggerNotifier,
     Notifications::WebhookNotifier,
@@ -68,7 +68,7 @@ class TransactionNotificationJob < ApplicationJob
     source_user = transaction.source_account.user
     destination_user = transaction.destination_account.user
 
-    if event_type == "completed"
+    if %w[completed refunded].include?(event_type)
       [
         [ source_user, destination_user ],
         [ destination_user, source_user ]
@@ -79,7 +79,11 @@ class TransactionNotificationJob < ApplicationJob
   end
 
   def build_payload(transaction, event_type, counterparty)
-    timestamp = event_type == "cancelled" ? transaction.cancelled_at : transaction.created_at
+    timestamp = case event_type
+    when "cancelled" then transaction.cancelled_at || transaction.updated_at
+    when "refunded" then transaction.refunded_at || transaction.updated_at
+    else transaction.created_at
+    end
     payload = {
       event_id: "transaction-#{transaction.id}-#{event_type}",
       event_type: event_type,
