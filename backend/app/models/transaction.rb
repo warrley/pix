@@ -16,6 +16,7 @@ class Transaction < ApplicationRecord
   validates :description, length: { maximum: 140 }, allow_nil: true
   validates :failure_reason, length: { maximum: 255 }, allow_nil: true
   validate :prevent_self_transfer
+  validate :validate_location
 
   def amount
     Pix::Money.decimal_from_cents(amount_cents)
@@ -35,5 +36,17 @@ class Transaction < ApplicationRecord
     if source_account_id.present? && source_account_id == destination_account_id
       errors.add(:destination_account_id, "cannot be the same as source account")
     end
+  end
+
+  def validate_location
+    if latitude.present? != longitude.present?
+      errors.add(:base, "latitude and longitude must be provided together")
+      return
+    end
+
+    return if latitude.blank?
+
+    errors.add(:latitude, "must be between -90 and 90") unless latitude.between?(-90, 90)
+    errors.add(:longitude, "must be between -180 and 180") unless longitude.between?(-180, 180)
   end
 end

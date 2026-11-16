@@ -40,6 +40,46 @@ class Pix::TransferServiceTest < ActiveSupport::TestCase
     assert_equal [ "Transfer created", "Balance transfer completed" ], events.map(&:reason)
   end
 
+  test "persists location on the transaction and its audit events" do
+    result = Pix::TransferService.call(
+      source_account_id: @source_account.id,
+      pix_key: "receiver_svc@example.com",
+      amount_cents: 15_000,
+      latitude: "-3.73186210",
+      longitude: "-38.52666980"
+    )
+
+    assert result.success?
+    assert_equal BigDecimal("-3.73186210"), result.transaction.latitude
+    assert_equal BigDecimal("-38.52666980"), result.transaction.longitude
+    result.transaction.transaction_events.each do |event|
+      assert_equal result.transaction.latitude, event.latitude
+      assert_equal result.transaction.longitude, event.longitude
+    end
+  end
+
+  test "rejects partial or out-of-range location" do
+    partial = Pix::TransferService.call(
+      source_account_id: @source_account.id,
+      pix_key: "receiver_svc@example.com",
+      amount_cents: 15_000,
+      latitude: 1
+    )
+    out_of_range = Pix::TransferService.call(
+      source_account_id: @source_account.id,
+      pix_key: "receiver_svc@example.com",
+      amount_cents: 15_000,
+      latitude: 91,
+      longitude: 0
+    )
+
+    assert_not partial.success?
+    assert_equal "location.invalid", partial.error.code
+    assert_equal :unprocessable_entity, partial.error.http_status
+    assert_not out_of_range.success?
+    assert_equal "location.invalid", out_of_range.error.code
+  end
+
   test "rejects transfer with amount <= 0" do
     result = Pix::TransferService.call(
       source_account_id: @source_account.id,

@@ -7,6 +7,7 @@ class TransactionEvent < ApplicationRecord
   validates :previous_status, length: { maximum: 20 }, allow_nil: true
   validates :current_status, length: { maximum: 20 }
   validates :amount, numericality: true
+  validate :validate_location
 
   def amount
     Pix::Money.decimal_from_cents(amount_cents)
@@ -23,5 +24,19 @@ class TransactionEvent < ApplicationRecord
 
   def readonly?
     persisted? || super
+  end
+
+  private
+
+  def validate_location
+    if latitude.present? != longitude.present?
+      errors.add(:base, "latitude and longitude must be provided together")
+      return
+    end
+
+    return if latitude.blank?
+
+    errors.add(:latitude, "must be between -90 and 90") unless latitude.between?(-90, 90)
+    errors.add(:longitude, "must be between -180 and 180") unless longitude.between?(-180, 180)
   end
 end

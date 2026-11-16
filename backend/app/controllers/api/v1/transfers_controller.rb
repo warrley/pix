@@ -24,7 +24,9 @@ module Api
           pix_key: transfer_params[:pix_key],
           amount_cents: amount_cents,
           description: transfer_params[:description],
-          end_to_end_id: e2e_id
+          end_to_end_id: e2e_id,
+          latitude: transfer_params[:latitude],
+          longitude: transfer_params[:longitude]
         )
 
         if result.success?
@@ -80,13 +82,19 @@ module Api
         "#{"*" * (digits.length - 4)}#{digits.last(4)}"
       end
 
+      def format_coordinate(value)
+        value&.then { |coordinate| format("%.8f", coordinate) }
+      end
+
       def transfer_params
         params.require(:transfer).permit(
           :source_account_id,
           :pix_key,
           :amount,
           :description,
-          :end_to_end_id
+          :end_to_end_id,
+          :latitude,
+          :longitude
         )
       end
 
@@ -99,6 +107,8 @@ module Api
           status: tx.status,
           cancelled_at: tx.cancelled_at,
           pix_key_used: tx.pix_key_used,
+          latitude: format_coordinate(tx.latitude),
+          longitude: format_coordinate(tx.longitude),
           created_at: tx.created_at,
           sender: {
             account_id: tx.source_account_id,

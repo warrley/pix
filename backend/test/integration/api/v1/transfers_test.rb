@@ -42,6 +42,46 @@ class Api::V1::TransfersTest < ActionDispatch::IntegrationTest
     assert_equal [ nil, "created" ], events.map(&:previous_status)
   end
 
+  test "POST /api/v1/transfers persists and returns location" do
+    post api_v1_transfers_path, params: {
+      transfer: {
+        source_account_id: @source_account.id,
+        pix_key: "receiver_api@example.com",
+        amount: "50.00",
+        latitude: "-3.73186210",
+        longitude: "-38.52666980"
+      }
+    }, as: :json
+
+    assert_response :created
+    body = response.parsed_body
+    assert_equal "-3.73186210", body.dig("data", "latitude")
+    assert_equal "-38.52666980", body.dig("data", "longitude")
+    transaction = Transaction.find(body.dig("data", "id"))
+    assert_equal transaction.latitude, transaction.transaction_events.first.latitude
+    assert_equal transaction.longitude, transaction.transaction_events.first.longitude
+  end
+
+  test "POST /api/v1/transfers rejects partial and out-of-range location" do
+    [
+      { latitude: "-3.0" },
+      { latitude: "91.0", longitude: "0.0" },
+      { latitude: "0.0", longitude: "-181.0" }
+    ].each do |location|
+      post api_v1_transfers_path, params: {
+        transfer: {
+          source_account_id: @source_account.id,
+          pix_key: "receiver_api@example.com",
+          amount: "50.00",
+          **location
+        }
+      }, as: :json
+
+      assert_response :unprocessable_entity
+      assert_equal "location.invalid", response.parsed_body["code"]
+    end
+  end
+
   test "POST /api/v1/transfers returns 422 when transfer fails" do
     post api_v1_transfers_path, params: {
       transfer: {
