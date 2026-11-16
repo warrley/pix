@@ -1,0 +1,307 @@
+{
+  "info": {
+    "_postman_id": "pix-refund-issue-60-collection",
+    "name": "PIX - Issue #60 (Refund Engine & API)",
+    "description": "Collection completa para demonstração e testes manuais da funcionalidade de Estorno (Refund) de transações Pix indevidas/fraudulentas.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "alice_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "alice_account_id",
+      "value": "980190992",
+      "type": "string"
+    },
+    {
+      "key": "bob_account_id",
+      "value": "980190993",
+      "type": "string"
+    },
+    {
+      "key": "bob_pix_key",
+      "value": "bob.test@example.com",
+      "type": "string"
+    },
+    {
+      "key": "created_transaction_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Health Check da API",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/up",
+          "host": ["{{base_url}}"],
+          "path": ["up"]
+        },
+        "description": "Verifica se o backend Rails está online e respondendo."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('API está saudável (Status 200)', function () {",
+              "    pm.response.to.have.status(200);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "1. Autenticação (Login Alice -> Salva Token)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"alice.test@example.com\",\n  \"password\": \"password123\",\n  \"scopes\": [\"transfers:write\", \"transfers:read\"]\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/auth/token",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "auth", "token"]
+        },
+        "description": "Faz login com a usuária Alice e salva automaticamente o Bearer Token na variável `alice_token` da collection."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Login realizado com sucesso (201 Created)', function () {",
+              "    pm.response.to.have.status(201);",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData.data.access_token).to.not.be.empty;",
+              "    pm.collectionVariables.set('alice_token', jsonData.data.access_token);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Realizar Transferência Pix (Alice -> Bob)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{alice_token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"transfer\": {\n    \"source_account_id\": {{alice_account_id}},\n    \"pix_key\": \"{{bob_pix_key}}\",\n    \"amount\": \"75.50\",\n    \"description\": \"Pagamento Pix para simulação de estorno\"\n  }\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/transfers",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "transfers"]
+        },
+        "description": "Cria uma transação Pix no status `completed` e salva o ID na variável `created_transaction_id`."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Transferência criada e concluída com sucesso (201 Created)', function () {",
+              "    pm.response.to.have.status(201);",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData.data.status).to.eql('completed');",
+              "    pm.collectionVariables.set('created_transaction_id', jsonData.data.id);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. [Cenário de Sucesso] Executar Estorno (Refund)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{alice_token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"reason\": \"Transação indevida/suspeita de golpe reportada pelo cliente\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/transfers/{{created_transaction_id}}/refund",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "transfers", "{{created_transaction_id}}", "refund"]
+        },
+        "description": "Executa o estorno atômico da transação concluída. O dinheiro sai da conta de Bob e volta para Alice."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Estorno executado com sucesso (200 OK)', function () {",
+              "    pm.response.to.have.status(200);",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData.data.status).to.eql('refunded');",
+              "    pm.expect(jsonData.data.refunded_at).to.not.be.null;",
+              "    pm.expect(jsonData.error).to.be.null;",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. [Cenário de Validação] Rejeição de Estorno Duplo",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{alice_token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"reason\": \"Tentativa repetida de estorno\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/transfers/{{created_transaction_id}}/refund",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "transfers", "{{created_transaction_id}}", "refund"]
+        },
+        "description": "Testa se a API rejeita estorno duplo em uma transação que já foi estornada."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Rejeição com 409 Conflict', function () {",
+              "    pm.response.to.have.status(409);",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData.code).to.eql('transaction.already_refunded');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. [Cenário de Validação] Falha por Motivo Ausente",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{alice_token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"reason\": \"\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/transfers/{{created_transaction_id}}/refund",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "transfers", "{{created_transaction_id}}", "refund"]
+        },
+        "description": "Verifica se o backend exige obrigatoriamente o preenchimento de um motivo (`reason`)."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Rejeição com 422 Unprocessable Entity', function () {",
+              "    pm.response.to.have.status(422);",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData.code).to.eql('refund.missing_reason');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Consultar Transação Estornada (Receipt)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{alice_token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/transfers/{{created_transaction_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "transfers", "{{created_transaction_id}}"]
+        },
+        "description": "Consulta o comprovante da transação e valida que seu status permanece `refunded` com carimbo de data/hora."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Recibo exibe status refunded', function () {",
+              "    pm.response.to.have.status(200);",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData.data.status).to.eql('refunded');",
+              "    pm.expect(jsonData.data.refunded_at).to.not.be.null;",
+              "});"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

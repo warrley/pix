@@ -2,9 +2,8 @@ module Api
   module V1
     class TransfersController < ApplicationController
       wrap_parameters false
-      before_action -> { require_api_scope!("transfers:write") }, only: :create
+      before_action -> { require_api_scope!("transfers:write") }, only: [ :create, :cancel, :refund ]
       before_action -> { require_api_scope!("transfers:read") }, only: :show
-      before_action -> { require_api_scope!("transfers:write") }, only: :cancel
 
       def create
         source_account = current_user.accounts.find_by(id: transfer_params[:source_account_id])
@@ -67,6 +66,24 @@ module Api
         end
       end
 
+      def refund
+        transaction = Transaction.find_by(id: params[:id])
+        return render_error("Transaction not found", status: :not_found, code: "transaction.not_found") unless transaction && owns_transaction?(transaction)
+
+        if params[:reason].blank?
+          return render_error("Reason is required to refund a transaction", status: :unprocessable_entity, code: "refund.missing_reason")
+        end
+
+        result = Pix::RefundService.call(transaction_id: params[:id], reason: params[:reason])
+
+        if result.success?
+          Security::AuditLogger.record(event: "transfer_refunded", actor: current_user, resource: result.transaction, request: request)
+          render_success(receipt_data(result.transaction))
+        else
+          render_error(result.error)
+        end
+      end
+
       private
 
       def owns_transaction?(transaction)
@@ -98,6 +115,7 @@ module Api
           description: tx.description,
           status: tx.status,
           cancelled_at: tx.cancelled_at,
+          refunded_at: tx.refunded_at,
           pix_key_used: tx.pix_key_used,
           created_at: tx.created_at,
           sender: {
