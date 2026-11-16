@@ -482,7 +482,13 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('201 ou 422', () => { if (pm.response.code === 201) pm.collectionVariables.set('new_pix_key_id', pm.response.json().data.id); pm.expect([201, 422]).to.include(pm.response.code); });"
+                  "pm.test('201 Created', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  var json = pm.response.json();",
+                  "  if (json.data && json.data.id) {",
+                  "    pm.collectionVariables.set('new_pix_key_id', json.data.id);",
+                  "  }",
+                  "});"
                 ]
               }
             }
@@ -506,6 +512,32 @@
               "script": {
                 "exec": [
                   "pm.test('200 OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. Remover Chave Pix",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{alice_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/pix_keys/{{new_pix_key_id}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('204 No Content', () => {",
+                  "  pm.expect([200, 204]).to.include(pm.response.code);",
+                  "});"
                 ]
               }
             }
