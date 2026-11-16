@@ -41,6 +41,7 @@ Rails.application.routes.draw do
       resources :transfers, only: [ :create, :show ] do
         member do
           post :cancel
+          post :refund
         end
       end
       resources :scheduled_transfers, only: [ :destroy ], controller: "scheduled_transfers"
