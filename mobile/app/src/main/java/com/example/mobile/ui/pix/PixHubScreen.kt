@@ -59,6 +59,7 @@ import com.example.mobile.ui.components.ScreenColumn
 fun PixHubScreen(
     onBack: () -> Unit,
     onOpenTransfer: (initialKey: String, initialAmount: String) -> Unit,
+    onOpenScheduledTransfers: () -> Unit,
     onOpenQrScan: (startInPasteMode: Boolean) -> Unit,
     onOpenCharge: () -> Unit,
     onOpenPixKeys: () -> Unit,
@@ -145,7 +146,7 @@ fun PixHubScreen(
                 PixGridButton(
                     icon = Icons.Default.CalendarToday,
                     label = "Programar",
-                    onClick = { onOpenUnderDevelopment("Programar Pix") }
+                    onClick = onOpenScheduledTransfers
                 )
                 PixGridButton(
                     icon = Icons.Default.ContentCopy,

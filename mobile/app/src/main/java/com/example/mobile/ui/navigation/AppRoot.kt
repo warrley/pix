@@ -13,6 +13,7 @@ import com.example.mobile.ui.pix.PixChargeScreen
 import com.example.mobile.ui.pix.PixHubScreen
 import com.example.mobile.ui.pix.PixKeysScreen
 import com.example.mobile.ui.pix.PixQrScanScreen
+import com.example.mobile.ui.pix.ScheduledTransfersScreen
 import com.example.mobile.ui.summary.FinancialSummaryScreen
 import com.example.mobile.ui.transfer.TransferScreen
 
@@ -52,6 +53,9 @@ fun AppRoot(viewModel: AppViewModel = viewModel(factory = AppViewModel.Factory))
                         initialAmount = amount
                     )
                 )
+            },
+            onOpenScheduledTransfers = {
+                viewModel.navigate(Screen.ScheduledTransfers(current.accountId, current.balance))
             },
             onOpenQrScan = { startInPasteMode ->
                 viewModel.navigate(
@@ -98,6 +102,11 @@ fun AppRoot(viewModel: AppViewModel = viewModel(factory = AppViewModel.Factory))
             onBack = viewModel::back
         )
         is Screen.PixKeys -> PixKeysScreen(current.accountId, onBack = viewModel::back)
+        is Screen.ScheduledTransfers -> ScheduledTransfersScreen(
+            accountId = current.accountId,
+            accountBalance = current.balance,
+            onBack = viewModel::back
+        )
         is Screen.Transfer -> {
             val homeViewModel: HomeViewModel = viewModel(
                 key = "home-$userId",

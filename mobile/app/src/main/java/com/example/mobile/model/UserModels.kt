@@ -112,3 +112,32 @@ data class Counterparty(val name: String? = null)
 @Serializable
 data class StatementResponse(val transactions: List<StatementEntry> = emptyList())
 
+@Serializable
+data class ScheduledTransferResponse(
+    val id: Long,
+    @SerialName("account_id") val accountId: Long,
+    @SerialName("destination_account_id") val destinationAccountId: Long,
+    @SerialName("pix_key_used") val pixKeyUsed: String,
+    val amount: String,
+    val description: String? = null,
+    @SerialName("scheduled_for") val scheduledFor: String,
+    val status: String,
+    @SerialName("failure_reason") val failureReason: String? = null,
+    @SerialName("transaction_id") val transactionId: Long? = null,
+    @SerialName("created_at") val createdAt: String? = null
+)
+
+@Serializable
+data class ScheduledTransferCreateRequest(
+    @SerialName("pix_key") val pixKey: String,
+    val amount: String,
+    val description: String? = null,
+    @SerialName("scheduled_for") val scheduledFor: String
+)
+
+@Serializable
+data class ScheduledTransferCreateBody(
+    @SerialName("scheduled_transfer") val scheduledTransfer: ScheduledTransferCreateRequest
+)
+
+

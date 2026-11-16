@@ -2,9 +2,14 @@ package com.example.mobile.util
 
 import java.math.BigDecimal
 import java.text.NumberFormat
+import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Locale
+import java.util.TimeZone
 
 private val brazil = Locale.forLanguageTag("pt-BR")
+private val saoPauloTz = TimeZone.getTimeZone("America/Sao_Paulo")
+private val utcTz = TimeZone.getTimeZone("UTC")
 
 fun BigDecimal.toBrl(): String = NumberFormat.getCurrencyInstance(brazil).format(this)
 
@@ -30,3 +35,37 @@ fun normalizePhone(raw: String): String {
     if (digits.isEmpty()) return ""
     return if (raw.trim().startsWith("+")) "+$digits" else "+55$digits"
 }
+
+fun todayIsoDate(nowMillis: Long = System.currentTimeMillis()): String {
+    val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = saoPauloTz }
+    return formatter.format(nowMillis)
+}
+
+fun tomorrowIsoDate(nowMillis: Long = System.currentTimeMillis()): String {
+    val cal = Calendar.getInstance(saoPauloTz).apply {
+        timeInMillis = nowMillis
+        add(Calendar.DAY_OF_MONTH, 1)
+    }
+    val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = saoPauloTz }
+    return formatter.format(cal.time)
+}
+
+fun formatIsoDateToBr(isoDate: String): String {
+    val clean = isoDate.trim().take(10)
+    val parts = clean.split('-')
+    if (parts.size != 3) return isoDate
+    return "${parts[2]}/${parts[1]}/${parts[0]}"
+}
+
+fun utcMillisToIsoDate(utcMillis: Long): String {
+    val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = utcTz }
+    return formatter.format(utcMillis)
+}
+
+fun isoDateToUtcMillis(isoDate: String): Long? = runCatching {
+    val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
+        timeZone = utcTz
+        isLenient = false
+    }
+    formatter.parse(isoDate.trim())?.time
+}.getOrNull()
