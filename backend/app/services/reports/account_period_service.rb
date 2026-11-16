@@ -62,6 +62,7 @@ module Reports
       transactions_relation = Transaction.where(source_account_id: account.id)
                                          .or(Transaction.where(destination_account_id: account.id))
                                          .where(created_at: start_time..end_time)
+                                         .includes(source_account: :user, destination_account: :user)
                                          .order(created_at: :asc)
 
       itemized_transactions = transactions_relation.map do |tx|
