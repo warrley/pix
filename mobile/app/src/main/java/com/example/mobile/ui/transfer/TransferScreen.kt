@@ -1,6 +1,11 @@
 package com.example.mobile.ui.transfer
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -57,16 +62,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mobile.model.PixKeyLookupResponse
 import com.example.mobile.model.StatementEntry
 import com.example.mobile.model.TransferReceipt
+import com.example.mobile.ui.components.DeviceContactsBottomSheet
 import com.example.mobile.ui.components.ErrorText
 import com.example.mobile.ui.components.PixScaffold
 import com.example.mobile.ui.components.ScreenColumn
@@ -117,6 +125,32 @@ fun TransferScreen(
         )
     }
     var showDetails by remember { mutableStateOf(false) }
+    var showContactsSheet by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+
+    val contactsPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            showContactsSheet = true
+        } else {
+            Toast.makeText(
+                context,
+                "Permissão de contatos necessária para buscar chaves na agenda.",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
+    fun openDeviceContacts() {
+        val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) ==
+            PackageManager.PERMISSION_GRANTED
+        if (granted) {
+            showContactsSheet = true
+        } else {
+            contactsPermissionLauncher.launch(Manifest.permission.READ_CONTACTS)
+        }
+    }
 
     LaunchedEffect(flowId, initialKey, initialAmount, initialRecipient, initialDescription) {
         if (initialRecipient != null) {
@@ -236,11 +270,16 @@ fun TransferScreen(
                             singleLine = true,
                             enabled = !state.isLookingUp,
                             trailingIcon = {
-                                Icon(
-                                    Icons.Default.Contacts,
-                                    contentDescription = "Contatos",
-                                    tint = colors.onSurfaceVariant
-                                )
+                                IconButton(
+                                    onClick = ::openDeviceContacts,
+                                    enabled = !state.isLookingUp
+                                ) {
+                                    Icon(
+                                        Icons.Default.Contacts,
+                                        contentDescription = "Contatos do celular",
+                                        tint = colors.primary
+                                    )
+                                }
                             },
                             colors = TextFieldDefaults.colors(
                                 focusedTextColor = colors.onBackground,
@@ -830,6 +869,18 @@ fun TransferScreen(
                 }
             }
         }
+    }
+
+    if (showContactsSheet) {
+        DeviceContactsBottomSheet(
+            onSelectPixKey = { selectedKey ->
+                viewModel.onPixKeyChange(selectedKey)
+                viewModel.verifyRecipientKey {
+                    step = 2
+                }
+            },
+            onDismiss = { showContactsSheet = false }
+        )
     }
 }
 
