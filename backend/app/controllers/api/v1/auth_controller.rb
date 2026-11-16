@@ -3,7 +3,10 @@ module Api
     class AuthController < ApplicationController
       DUMMY_PASSWORD_DIGEST = Security::PasswordHasher.create(SecureRandom.hex(32))
 
-      skip_before_action :authenticate_api_user!, only: :create
+      skip_before_action :authenticate_api_user!, only: [ :create, :signup ]
+      rate_limit to: 10, within: 1.hour, name: "signup_by_ip",
+        with: -> { render json: { data: nil, error: { code: "rate_limited", message: "Too many attempts" } }, status: :too_many_requests },
+        only: :signup
       rate_limit to: 5, within: 15.minutes, name: "login_by_identity",
         by: -> { [ request.remote_ip, params[:email].to_s.downcase.first(254) ] },
         with: -> { render json: { data: nil, error: { code: "rate_limited", message: "Too many attempts" } }, status: :too_many_requests },
@@ -57,8 +60,26 @@ module Api
           access_token: raw_token,
           token_type: "Bearer",
           expires_at: access_token.expires_at.iso8601,
-          scopes: access_token.scopes
+          scopes: access_token.scopes,
+          user: user.as_json(only: %i[id name email phone])
         }, status: :created)
+      end
+
+      # Public self-registration. Always creates a regular customer; the role is never
+      # taken from the request.
+      def signup
+        user = User.new(signup_params)
+        if user.password.blank?
+          user.errors.add(:password, :blank)
+          return render_error(user.errors.to_hash)
+        end
+
+        if user.save
+          Security::AuditLogger.record(event: "user_signed_up", actor: user, resource: user, request: request)
+          render_success(user.as_json(only: %i[id name email phone created_at updated_at]), status: :created)
+        else
+          render_error(user.errors.to_hash)
+        end
       end
 
       def destroy
@@ -67,6 +88,12 @@ module Api
       end
 
       private
+
+      def signup_params
+        permitted = params.require(:user).permit(:name, :email, :doc_id, :phone)
+        permitted[:password] = params[:user][:password] if params[:user].key?(:password)
+        permitted
+      end
 
       def render_invalid_credentials
         render json: {

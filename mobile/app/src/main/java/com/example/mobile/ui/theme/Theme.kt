@@ -13,26 +13,32 @@ private val DarkColorScheme = darkColorScheme(
     primaryContainer = RuRubyDark,
     onPrimaryContainer = Color.White,
     secondary = RuRubyLight,
-    onSecondary = RuRubyDark,
+    onSecondary = Color.White,
     background = RuBackgroundDark,
-    surface = RuSurfaceDark,
     onBackground = RuTextPrimaryDark,
+    surface = RuSurfaceDark,
     onSurface = RuTextPrimaryDark,
-    error = RuError
+    surfaceVariant = RuSurfaceVariantDark,
+    onSurfaceVariant = RuTextSecondaryDark,
+    outline = RuBorderDark,
+    error = RuCoralRed
 )
 
 private val LightColorScheme = lightColorScheme(
     primary = RuRubyRed,
     onPrimary = Color.White,
-    primaryContainer = RuRubyLight,
+    primaryContainer = RuRubySoftLight,
     onPrimaryContainer = RuRubyDark,
     secondary = RuRubyDark,
     onSecondary = Color.White,
     background = RuBackgroundLight,
+    onBackground = RuTextPrimaryLight,
     surface = RuSurfaceLight,
-    onBackground = RuTextPrimary,
-    onSurface = RuTextPrimary,
-    error = RuError
+    onSurface = RuTextPrimaryLight,
+    surfaceVariant = RuSurfaceVariantLight,
+    onSurfaceVariant = RuTextSecondaryLight,
+    outline = RuBorderLight,
+    error = RuCoralRed
 )
 
 @Composable
