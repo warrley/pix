@@ -12,6 +12,7 @@ import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logger
 import io.ktor.client.plugins.logging.Logging
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
@@ -19,6 +20,9 @@ import kotlinx.serialization.json.Json
 object KtorClient {
     // Reduced timeout to 5 seconds as requested
     private const val TIMEOUT_MILLIS = 5_000L
+
+    @Volatile
+    var authToken: String? = null
 
     fun createHttpClient(engine: HttpClientEngine = Android.create()): HttpClient {
         return HttpClient(engine) {
@@ -38,12 +42,16 @@ object KtorClient {
 
             install(Logging) {
                 logger = Logger.DEFAULT
-                level = LogLevel.ALL
+                level = if (BuildConfig.DEBUG) LogLevel.INFO else LogLevel.NONE
+                sanitizeHeader { header -> header.equals(HttpHeaders.Authorization, ignoreCase = true) }
             }
 
             defaultRequest {
                 url(BuildConfig.API_BASE_URL)
                 contentType(ContentType.Application.Json)
+                authToken?.takeIf { it.isNotBlank() }?.let { token ->
+                    headers.append(HttpHeaders.Authorization, "Bearer $token")
+                }
             }
 
             engine {

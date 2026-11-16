@@ -7,8 +7,8 @@ data class UserResponse(
     val id: Long,
     val name: String,
     val email: String,
-    val doc_id: String,
-    val phone: String,
+    val doc_id: String = "",
+    val phone: String = "",
     val created_at: String? = null,
     val updated_at: String? = null
 )
@@ -18,7 +18,8 @@ data class UserCreateRequest(
     val name: String,
     val email: String,
     val doc_id: String,
-    val phone: String
+    val phone: String,
+    val password: String? = null
 )
 
 @Serializable

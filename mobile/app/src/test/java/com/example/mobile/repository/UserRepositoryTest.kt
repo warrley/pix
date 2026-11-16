@@ -75,6 +75,30 @@ class UserRepositoryTest {
     }
 
     @Test
+    fun getUser_withoutDocId_deserializesWithDefaultEmptyDocId() = runTest {
+        val jsonResponse = """
+            {
+                "data": {
+                    "id": 1,
+                    "name": "Warley Silva",
+                    "email": "warley@example.com",
+                    "phone": "+5585999999999"
+                },
+                "error": null
+            }
+        """.trimIndent()
+
+        val mockClient = createMockClient(jsonResponse, HttpStatusCode.OK)
+        val repository = DefaultUserRepository(KtorUserRemoteDataSource(mockClient))
+
+        val result = repository.getUser(1L)
+        assertTrue(result.isSuccess)
+        val user = result.getOrThrow()
+        assertEquals(1L, user.id)
+        assertEquals("", user.doc_id)
+    }
+
+    @Test
     fun createUser_success_returnsCreatedUser() = runTest {
         val jsonResponse = """
             {
