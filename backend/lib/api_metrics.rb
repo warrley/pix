@@ -14,6 +14,7 @@ class ApiMetrics
     [ %r{\A/api-docs/openapi\.yaml\z}, "/api-docs/openapi.yaml" ],
     [ %r{\A/openapi\.yaml\z}, "/openapi.yaml" ],
     [ %r{\A/api/v1/auth/token\z}, "/api/v1/auth/token" ],
+    [ %r{\A/api/v1/auth/signup\z}, "/api/v1/auth/signup" ],
     [ %r{\A/api/v1/users\z}, "/api/v1/users" ],
     [ %r{\A/api/v1/users/[^/]+\z}, "/api/v1/users/:id" ],
     [ %r{\A/api/v1/users/[^/]+/accounts\z}, "/api/v1/users/:id/accounts" ],
@@ -22,14 +23,19 @@ class ApiMetrics
     [ %r{\A/api/v1/accounts/[^/]+\z}, "/api/v1/accounts/:id" ],
     [ %r{\A/api/v1/accounts/[^/]+/block_fraud\z}, "/api/v1/accounts/:id/block_fraud" ],
     [ %r{\A/api/v1/accounts/[^/]+/unblock_fraud\z}, "/api/v1/accounts/:id/unblock_fraud" ],
+    [ %r{\A/api/v1/accounts/[^/]+/limit\z}, "/api/v1/accounts/:id/limit" ],
     [ %r{\A/api/v1/accounts/[^/]+/pix_keys\z}, "/api/v1/accounts/:id/pix_keys" ],
     [ %r{\A/api/v1/accounts/[^/]+/transfers\z}, "/api/v1/accounts/:id/transfers" ],
+    [ %r{\A/api/v1/accounts/[^/]+/scheduled_transfers\z}, "/api/v1/accounts/:id/scheduled_transfers" ],
     [ %r{\A/api/v1/accounts/[^/]+/reports/statement(?:\.[a-z0-9]+)?\z}i, "/api/v1/accounts/:id/reports/statement" ],
+    [ %r{\A/api/v1/pix_keys/lookup\z}, "/api/v1/pix_keys/lookup" ],
     [ %r{\A/api/v1/pix_keys/[^/]+\z}, "/api/v1/pix_keys/:id" ],
     [ %r{\A/api/v1/pix_keys/[^/]+/unblock\z}, "/api/v1/pix_keys/:id/unblock" ],
     [ %r{\A/api/v1/transfers\z}, "/api/v1/transfers" ],
     [ %r{\A/api/v1/transfers/[^/]+\z}, "/api/v1/transfers/:id" ],
-    [ %r{\A/api/v1/transfers/[^/]+/cancel\z}, "/api/v1/transfers/:id/cancel" ]
+    [ %r{\A/api/v1/transfers/[^/]+/cancel\z}, "/api/v1/transfers/:id/cancel" ],
+    [ %r{\A/api/v1/transfers/[^/]+/refund\z}, "/api/v1/transfers/:id/refund" ],
+    [ %r{\A/api/v1/scheduled_transfers/[^/]+\z}, "/api/v1/scheduled_transfers/:id" ]
   ].freeze
 
   def initialize(app, metrics_token: nil)

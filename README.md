@@ -42,12 +42,42 @@ Open your browser and navigate to the health check endpoint:
 
 If you see a green screen with the Rails logo, your local setup is perfect!
 
-### 5. Observability (Prometheus + Grafana)
+### 5. Seeding the Database (Test Data)
+When running `docker compose up --build` for the first time, `rails db:prepare` runs migrations and seeds the database automatically. If your database was already initialized and you want to reload the test seeds for Postman, run:
+
+```bash
+docker compose exec backend bundle exec rails db:seed
+```
+
+#### Pre-configured Test Users:
+| User | Email | Password | Role | Pix Key | Initial Balance |
+|---|---|---|---|---|---|
+| **Alice Silva** | `alice.test@example.com` | `password123` | `operator` (Full access) | `alice.test@example.com` | R$ 1,500.00 |
+| **Bob Santos** | `bob.test@example.com` | `password123` | `customer` | `bob.test@example.com` | R$ 800.00 |
+
+### 6. Observability (Prometheus + Grafana)
 Set `METRICS_BEARER_TOKEN`, `GRAFANA_ADMIN_USER`, and `GRAFANA_ADMIN_PASSWORD` in your ignored `.env` file before starting the containers with `docker compose up`:
 - **API Metrics Endpoint (`/metrics`)**: `http://localhost:3000/metrics` (protected by `Authorization: Bearer <METRICS_BEARER_TOKEN>`).
 - **Prometheus**: [http://127.0.0.1:9090](http://127.0.0.1:9090) (bound to loopback by default).
 - **Grafana**: [http://127.0.0.1:3001](http://127.0.0.1:3001) (authenticated with `GRAFANA_ADMIN_USER` / `GRAFANA_ADMIN_PASSWORD` from `.env` — pre-provisioned with the Prometheus datasource and the **PIX — Observabilidade Completa** dashboard under `ops/grafana/`).
 - **PostgreSQL Exporter**: `http://127.0.0.1:9187/metrics`
+
+---
+
+## API Testing with Postman
+
+We provide a comprehensive Postman test collection covering 100% of the API v1 flows:
+
+- **File:** [`postman_pix_master_suite.json`](postman_pix_master_suite.json)
+- **Coverage:** 25 requests including JWT auth, accounts, statement, fraud blocking, Pix keys, transfers with idempotency, and refunds.
+
+### How to run in VS Code / Postman:
+1. Open the **Postman** extension in VS Code or Postman Desktop.
+2. Click **Import** and select `postman_pix_master_suite.json` from the repository root.
+3. Ensure `baseUrl` is set to `http://localhost:3000` (default).
+4. Run requests individually or run the whole suite with **Collection Runner**. Tokens and IDs are dynamically linked across requests.
+
+---
 
 ## Contributing
 Check the `CONTRIBUTING.md` file for our team rules before pushing code.

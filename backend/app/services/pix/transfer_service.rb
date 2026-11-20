@@ -10,7 +10,7 @@ module Pix
       new(...).call
     end
 
-    def initialize(source_account_id:, pix_key:, amount_cents:, description: nil, end_to_end_id: nil, record_failures: true, expected_destination_account_id: nil)
+    def initialize(source_account_id:, pix_key:, amount_cents:, description: nil, end_to_end_id: nil, record_failures: true, expected_destination_account_id: nil, latitude: nil, longitude: nil)
       @source_account_id = source_account_id
       @pix_key_raw = pix_key.to_s.strip
       @amount_cents = amount_cents
@@ -18,6 +18,10 @@ module Pix
       @end_to_end_id = end_to_end_id.presence || generate_end_to_end_id
       @record_failures = record_failures
       @expected_destination_account_id = expected_destination_account_id
+      @latitude_raw = latitude
+      @longitude_raw = longitude
+      @latitude = nil
+      @longitude = nil
     end
 
     def call
@@ -74,6 +78,8 @@ module Pix
             pix_key_used: @pix_key_raw,
             amount_cents: @amount_cents,
             description: @description,
+            latitude: @latitude,
+            longitude: @longitude,
             status: :processing
           )
 
@@ -105,6 +111,9 @@ module Pix
     private
 
     def validate_pre_transfer
+      location_error = validate_location
+      return location_error if location_error
+
       return DomainError.new(code: "amount.invalid", message: "Amount must be a positive integer number of cents", http_status: :unprocessable_entity) unless @amount_cents.is_a?(Integer) && @amount_cents.positive?
       return DomainError.new(code: "amount.limit_exceeded", message: "Amount exceeds the system transfer limit", http_status: :unprocessable_entity) if @amount_cents > Money::MAX_TRANSFER_CENTS
 
@@ -153,6 +162,8 @@ module Pix
         pix_key_used: @pix_key_raw,
         amount_cents: @amount_cents.positive? ? @amount_cents : 1,
         description: @description,
+        latitude: @latitude,
+        longitude: @longitude,
         status: :failed,
         failure_reason: reason
       )
@@ -169,8 +180,31 @@ module Pix
         source_account: transaction_record.source_account,
         destination_account: transaction_record.destination_account,
         reason: reason,
+        latitude: transaction_record.latitude,
+        longitude: transaction_record.longitude,
         created_at: Time.current
       )
+    end
+
+    def validate_location
+      latitude = @latitude_raw.presence
+      longitude = @longitude_raw.presence
+      return nil if latitude.nil? && longitude.nil?
+      return DomainError.new(code: "location.invalid", message: "Latitude and longitude must be provided together", http_status: :unprocessable_entity) if latitude.nil? || longitude.nil?
+
+      @latitude = parse_coordinate(latitude)
+      @longitude = parse_coordinate(longitude)
+      return DomainError.new(code: "location.invalid", message: "Latitude and longitude must be valid numbers", http_status: :unprocessable_entity) unless @latitude && @longitude
+      return DomainError.new(code: "location.invalid", message: "Latitude must be between -90 and 90", http_status: :unprocessable_entity) unless @latitude.between?(-90, 90)
+      return DomainError.new(code: "location.invalid", message: "Longitude must be between -180 and 180", http_status: :unprocessable_entity) unless @longitude.between?(-180, 180)
+
+      nil
+    end
+
+    def parse_coordinate(value)
+      BigDecimal(value.to_s)
+    rescue ArgumentError
+      nil
     end
 
     def self.normalize_key_value(value)

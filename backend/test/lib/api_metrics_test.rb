@@ -50,7 +50,14 @@ class ApiMetricsTest < Minitest::Test
 
   def test_normalizes_dynamic_path_segments_and_caps_unknown_api_routes
     assert_equal "/api/v1/accounts/:id", ApiMetrics.normalize_route("/api/v1/accounts/98765")
+    assert_equal "/api/v1/accounts/:id/limit", ApiMetrics.normalize_route("/api/v1/accounts/98765/limit")
+    assert_equal "/api/v1/accounts/:id/scheduled_transfers", ApiMetrics.normalize_route("/api/v1/accounts/98765/scheduled_transfers")
+    assert_equal "/api/v1/auth/signup", ApiMetrics.normalize_route("/api/v1/auth/signup")
+    assert_equal "/api/v1/pix_keys/lookup", ApiMetrics.normalize_route("/api/v1/pix_keys/lookup")
+    assert_equal "/api/v1/pix_keys/:id", ApiMetrics.normalize_route("/api/v1/pix_keys/42")
     assert_equal "/api/v1/transfers/:id", ApiMetrics.normalize_route("/api/v1/transfers/E01011010202609211000abcde123456")
+    assert_equal "/api/v1/transfers/:id/refund", ApiMetrics.normalize_route("/api/v1/transfers/42/refund")
+    assert_equal "/api/v1/scheduled_transfers/:id", ApiMetrics.normalize_route("/api/v1/scheduled_transfers/99")
     assert_equal "/api/v1/users/:id/reports/transactions", ApiMetrics.normalize_route("/api/v1/users/15/reports/transactions")
     assert_equal "/api/v1/users/:id/reports/transactions", ApiMetrics.normalize_route("/api/v1/users/15/reports/transactions.csv")
     assert_equal "OTHER", ApiMetrics.normalize_route("/wp-admin/setup.php")
