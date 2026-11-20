@@ -17,6 +17,7 @@ module Pix
       transaction = Transaction.find_by(id: @transaction_id)
       unless transaction
         error = DomainError.new(code: "transaction.not_found", message: "Transaction not found", http_status: :not_found)
+        record_cancel_metric(status: "cancel_rejected", error_code: error.code)
         return Result.new(success?: false, transaction: nil, error: error)
       end
 
@@ -56,14 +57,25 @@ module Pix
           )
         end
       rescue DomainFailure => e
+        record_cancel_metric(status: "cancel_rejected", error_code: e.error.code)
         return Result.new(success?: false, transaction: nil, error: e.error)
       rescue StandardError
         error = DomainError.new(code: "transaction.cancel_failed", message: "Transaction could not be cancelled", http_status: :unprocessable_entity)
+        record_cancel_metric(status: "cancel_rejected", error_code: error.code)
         return Result.new(success?: false, transaction: nil, error: error)
       end
 
       Notifications::Enqueuer.enqueue(transaction.id, "cancelled")
+      record_cancel_metric(status: "cancelled", error_code: "none")
       Result.new(success?: true, transaction: transaction, error: nil)
+    end
+
+    private
+
+    def record_cancel_metric(status:, error_code:)
+      Observability::Metrics.record_transfer(status: status, error_code: error_code)
+    rescue StandardError => e
+      Rails.logger.warn("Failed to record cancel metric status=#{status} error=#{e.class.name}")
     end
   end
 end

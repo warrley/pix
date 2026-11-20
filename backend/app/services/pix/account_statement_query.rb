@@ -42,7 +42,7 @@ module Pix
       total_pages = 1 if total_pages.zero?
 
       offset = (@page - 1) * @per_page
-      transactions = relation.limit(@per_page).offset(offset)
+      transactions = relation.includes(source_account: :user, destination_account: :user).limit(@per_page).offset(offset)
 
       formatted_transactions = transactions.map do |tx|
         is_debit = tx.source_account_id.to_s == @account_id.to_s

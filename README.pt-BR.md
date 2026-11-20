@@ -55,6 +55,13 @@ docker compose exec backend bundle exec rails db:seed
 | **Alice Silva** | `alice.test@example.com` | `password123` | `operator` (Acesso total) | `alice.test@example.com` | R$ 1.500,00 |
 | **Bob Santos** | `bob.test@example.com` | `password123` | `customer` | `bob.test@example.com` | R$ 800,00 |
 
+### 6. Observabilidade (Prometheus + Grafana)
+Defina `METRICS_BEARER_TOKEN`, `GRAFANA_ADMIN_USER` e `GRAFANA_ADMIN_PASSWORD` no seu arquivo `.env` local (ignorado pelo Git) antes de subir os containers com `docker compose up`:
+- **Endpoint de Métricas da API (`/metrics`)**: `http://localhost:3000/metrics` (protegido via header `Authorization: Bearer <METRICS_BEARER_TOKEN>`).
+- **Prometheus**: [http://127.0.0.1:9090](http://127.0.0.1:9090) (publicado apenas em loopback por padrão).
+- **Grafana**: [http://127.0.0.1:3001](http://127.0.0.1:3001) (autenticado com `GRAFANA_ADMIN_USER` / `GRAFANA_ADMIN_PASSWORD` definidos no `.env` — já vem com o datasource Prometheus e o dashboard **PIX — Observabilidade Completa** pré-provisionados em `ops/grafana/`).
+- **PostgreSQL Exporter**: `http://127.0.0.1:9187/metrics`
+
 ---
 
 ## Testes de API com o Postman

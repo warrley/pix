@@ -5,7 +5,14 @@ module Pix
     Result = Struct.new(:success?, :pix_key, :error, keyword_init: true)
 
     def self.unblock(pix_key)
-      new(pix_key).unblock
+      result = new(pix_key).unblock
+      key_type = result.pix_key&.key_type || (pix_key.is_a?(PixKey) ? pix_key.key_type : nil)
+      Observability::Metrics.record_pix_key_operation(
+        operation: "unblock",
+        key_type: key_type,
+        status: result.success? ? "success" : "failure"
+      )
+      result
     end
 
     def self.unblock!(pix_key)
