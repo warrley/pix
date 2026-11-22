@@ -542,6 +542,72 @@
               }
             }
           ]
+        },
+        {
+          "name": "5. Desbloquear Chave Pix Suspensa (Unblock)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{alice_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/pix_keys/{{new_pix_key_id}}/unblock"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 ou 422 conforme regra', () => {",
+                  "  pm.expect([200, 422]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6. Reassociar Chave Pix para Outra Conta (Portabilidade)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{alice_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"account_id\": {{alice_account_id}}\n}"
+            },
+            "url": "{{base_url}}/api/v1/pix_keys/{{new_pix_key_id}}/reassociate"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 ou 422 conforme regras', () => {",
+                  "  pm.expect([200, 422]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -628,6 +694,37 @@
               "script": {
                 "exec": [
                   "pm.test('200 OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. Cancelar Transferência Pix em Processamento (Cancel)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{alice_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/transfers/{{transfer_id}}/cancel"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 ou 422 conforme estado', () => {",
+                  "  pm.expect([200, 422]).to.include(pm.response.code);",
+                  "});"
                 ]
               }
             }
