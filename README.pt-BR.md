@@ -55,6 +55,18 @@ docker compose exec backend bundle exec rails db:seed
 | **Alice Silva** | `alice.test@example.com` | `password123` | `operator` (Acesso total) | `alice.test@example.com` | R$ 1.500,00 |
 | **Bob Santos** | `bob.test@example.com` | `password123` | `customer` | `bob.test@example.com` | R$ 800,00 |
 
+O seed também cria exemplos de movimentações concluídas, canceladas, estornadas e com falha nos últimos sete dias.
+
+### Painel administrativo
+
+Com o backend em execução, acesse:
+
+- Painel: [http://localhost:3000/admin](http://localhost:3000/admin)
+- Operador: `alice.test@example.com`
+- Senha: `password123`
+
+O painel usa os endpoints protegidos `/api/v1/admin/*` e exige uma conta `operator` com os scopes `users:admin`, `accounts:admin` e `reports:read`.
+
 ---
 
 ## Testes de API com o Postman

@@ -55,6 +55,18 @@ docker compose exec backend bundle exec rails db:seed
 | **Alice Silva** | `alice.test@example.com` | `password123` | `operator` (Full access) | `alice.test@example.com` | R$ 1,500.00 |
 | **Bob Santos** | `bob.test@example.com` | `password123` | `customer` | `bob.test@example.com` | R$ 800.00 |
 
+The seed also creates example completed, cancelled, refunded and failed transactions across the last seven days.
+
+### Administrative Dashboard
+
+With the backend running, open:
+
+- Dashboard: [http://localhost:3000/admin](http://localhost:3000/admin)
+- Test operator: `alice.test@example.com`
+- Password: `password123`
+
+The dashboard uses the protected `/api/v1/admin/*` endpoints and only accepts operators with the `users:admin`, `accounts:admin`, and `reports:read` scopes.
+
 ---
 
 ## API Testing with Postman
