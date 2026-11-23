@@ -35,11 +35,18 @@ module Api
           return render_error("Cannot close account with existing balance", status: :conflict, code: "account.balance_not_zero")
         end
 
-        if @account.update(status: "closed")
-          head :no_content
-        else
-          render_error(@account.errors.to_hash)
+        ActiveRecord::Base.transaction do
+          @account.pix_keys.where.not(status: "cancelled").find_each do |key|
+            key.cancelled!
+            Observability::Metrics.record_pix_key_operation(operation: "cancel", key_type: key.key_type, status: "success")
+          end
+          @account.update!(status: "closed")
         end
+
+        Security::AuditLogger.record(event: "account_closed", actor: current_user, resource: @account, request: request)
+        head :no_content
+      rescue ActiveRecord::RecordInvalid
+        render_error(@account.errors.to_hash)
       end
 
       private

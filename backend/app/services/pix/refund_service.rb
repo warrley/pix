@@ -20,6 +20,7 @@ module Pix
           message: "Reason is required to refund a transaction",
           http_status: :unprocessable_entity
         )
+        record_refund_metric(status: "refund_rejected", error_code: error.code)
         return Result.new(success?: false, transaction: nil, error: error)
       end
 
@@ -30,6 +31,7 @@ module Pix
           message: "Transaction not found",
           http_status: :not_found
         )
+        record_refund_metric(status: "refund_rejected", error_code: error.code)
         return Result.new(success?: false, transaction: nil, error: error)
       end
 
@@ -86,6 +88,7 @@ module Pix
           )
         end
       rescue DomainFailure => e
+        record_refund_metric(status: "refund_rejected", error_code: e.error.code)
         return Result.new(success?: false, transaction: nil, error: e.error)
       rescue StandardError => e
         error = DomainError.new(
@@ -93,11 +96,21 @@ module Pix
           message: e.message.presence || "Transaction could not be refunded",
           http_status: :unprocessable_entity
         )
+        record_refund_metric(status: "refund_rejected", error_code: error.code)
         return Result.new(success?: false, transaction: nil, error: error)
       end
 
       Notifications::Enqueuer.enqueue(transaction.id, "refunded")
+      record_refund_metric(status: "refunded", error_code: "none")
       Result.new(success?: true, transaction: transaction, error: nil)
+    end
+
+    private
+
+    def record_refund_metric(status:, error_code:)
+      Observability::Metrics.record_transfer(status: status, error_code: error_code)
+    rescue StandardError => e
+      Rails.logger.warn("Failed to record refund metric status=#{status} error=#{e.class.name}")
     end
   end
 end

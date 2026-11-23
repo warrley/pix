@@ -9,10 +9,16 @@ module Api
         only: :signup
       rate_limit to: 5, within: 15.minutes, name: "login_by_identity",
         by: -> { [ request.remote_ip, params[:email].to_s.downcase.first(254) ] },
-        with: -> { render json: { data: nil, error: { code: "rate_limited", message: "Too many attempts" } }, status: :too_many_requests },
+        with: -> {
+          Observability::Metrics.record_rate_limit("login_by_identity")
+          render json: { data: nil, error: { code: "rate_limited", message: "Too many attempts" } }, status: :too_many_requests
+        },
         only: :create
       rate_limit to: 20, within: 1.minute, name: "login_by_ip",
-        with: -> { render json: { data: nil, error: { code: "rate_limited", message: "Too many attempts" } }, status: :too_many_requests },
+        with: -> {
+          Observability::Metrics.record_rate_limit("login_by_ip")
+          render json: { data: nil, error: { code: "rate_limited", message: "Too many attempts" } }, status: :too_many_requests
+        },
         only: :create
 
       def create

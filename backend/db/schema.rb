@@ -18,12 +18,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_15_210300) do
     t.string "account_number", limit: 20, null: false
     t.string "agency_number", limit: 10, default: "0001", null: false
     t.datetime "created_at", null: false
-    t.string "fraud_block_reason", limit: 255
-    t.boolean "fraud_blocked", default: false, null: false
-    t.datetime "fraud_blocked_at"
     t.string "status", limit: 20, default: "active", null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
+    t.boolean "fraud_blocked", default: false, null: false
+    t.datetime "fraud_blocked_at"
+    t.string "fraud_block_reason", limit: 255
     t.bigint "balance_cents", default: 0, null: false
     t.decimal "daily_limit", precision: 14, scale: 2, default: "5000.0", null: false
     t.index ["account_number"], name: "index_accounts_on_account_number", unique: true
