@@ -9,7 +9,9 @@ data class UserResponse(
     val name: String,
     val email: String,
     val phone: String? = null,
-    @SerialName("created_at") val createdAt: String? = null
+    @SerialName("doc_id") val docId: String = "",
+    @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("updated_at") val updatedAt: String? = null
 )
 
 @Serializable

@@ -3,6 +3,7 @@ require "json"
 module Security
   class AuditLogger
     def self.record(event:, actor: nil, resource: nil, request: nil)
+      Observability::Metrics.record_security_event(event) if defined?(Observability::Metrics)
       details = {
         event: event,
         actor_id: actor&.id,

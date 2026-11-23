@@ -5,7 +5,14 @@ module Pix
     Result = Struct.new(:success?, :pix_key, :error, keyword_init: true)
 
     def self.unblock(pix_key)
-      new(pix_key).unblock
+      result = new(pix_key).unblock
+      key_type = result.pix_key&.key_type || (pix_key.is_a?(PixKey) ? pix_key.key_type : nil)
+      Observability::Metrics.record_pix_key_operation(
+        operation: "unblock",
+        key_type: key_type,
+        status: result.success? ? "success" : "failure"
+      )
+      result
     end
 
     def self.unblock!(pix_key)
@@ -126,7 +133,7 @@ module Pix
       ActiveRecord::Base.transaction do
         @pix_key.lock!
 
-        first_id, second_id = [current_account.id, target_account.id].sort
+        first_id, second_id = [ current_account.id, target_account.id ].sort
         locked_first = Account.lock.find(first_id)
         locked_second = (first_id == second_id) ? locked_first : Account.lock.find(second_id)
         locked_current = (locked_first.id == current_account.id) ? locked_first : locked_second

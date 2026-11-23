@@ -196,6 +196,22 @@ class Pix::TransferServiceTest < ActiveSupport::TestCase
     assert_equal 350.00, @dest_account.reload.balance
   end
 
+  test "keeps a completed transfer when metrics recording fails" do
+    result = nil
+    with_metrics_failure do
+      result = Pix::TransferService.call(
+        source_account_id: @source_account.id,
+        pix_key: "receiver_svc@example.com",
+        amount_cents: 15_000
+      )
+    end
+
+    assert result.success?
+    assert_equal "completed", result.transaction.status
+    assert_equal 850.00, @source_account.reload.balance
+    assert_equal 350.00, @dest_account.reload.balance
+  end
+
   test "rejects transfer from blocked source account" do
     @source_account.update!(status: "blocked")
 
@@ -351,6 +367,18 @@ class Pix::TransferServiceTest < ActiveSupport::TestCase
     yield
   ensure
     TransactionNotificationJob.define_singleton_method(:perform_later) do |*args, **kwargs|
+      original.call(*args, **kwargs)
+    end
+  end
+
+  def with_metrics_failure
+    original = Observability::Metrics.method(:record_transfer)
+    Observability::Metrics.define_singleton_method(:record_transfer) do |*|
+      raise Errno::ENOSPC, "No space left on device"
+    end
+    yield
+  ensure
+    Observability::Metrics.define_singleton_method(:record_transfer) do |*args, **kwargs|
       original.call(*args, **kwargs)
     end
   end

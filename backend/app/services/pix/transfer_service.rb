@@ -29,6 +29,7 @@ module Pix
       if validation_error
         failed_tx = record_failed_transaction(validation_error.message)
         enqueue_notification(failed_tx, "failed")
+        record_transfer_metric(status: "failed", error_code: validation_error.code)
         return Result.new(success?: false, transaction: failed_tx, error: validation_error)
       end
 
@@ -93,14 +94,17 @@ module Pix
       rescue DomainFailure => e
         failed_tx = record_failed_transaction(e.message)
         enqueue_notification(failed_tx, "failed")
+        record_transfer_metric(status: "failed", error_code: e.error.code)
         return Result.new(success?: false, transaction: failed_tx, error: e.error)
       rescue StandardError => e
         failed_tx = record_failed_transaction("Transfer could not be completed")
         enqueue_notification(failed_tx, "failed")
+        record_transfer_metric(status: "failed", error_code: "transfer.failed")
         return Result.new(success?: false, transaction: failed_tx, error: DomainError.new(code: "transfer.failed", message: "Transfer could not be completed", http_status: :unprocessable_entity))
       end
 
       enqueue_notification(transaction_record, "completed")
+      record_transfer_metric(status: "completed", amount_cents: @amount_cents)
       Result.new(success?: true, transaction: transaction_record, error: nil)
     end
 
@@ -220,6 +224,12 @@ module Pix
       return unless transaction
 
       Notifications::Enqueuer.enqueue(transaction.id, event_type)
+    end
+
+    def record_transfer_metric(status:, amount_cents: nil, error_code: "none")
+      Observability::Metrics.record_transfer(status: status, amount_cents: amount_cents, error_code: error_code)
+    rescue StandardError => e
+      Rails.logger.warn("Failed to record transfer metric status=#{status} error=#{e.class.name}")
     end
   end
 end

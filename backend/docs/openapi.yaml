@@ -48,6 +48,21 @@ paths:
               schema:
                 type: string
 
+  /metrics:
+    get:
+      tags: [Health]
+      summary: Exporta métricas no formato Prometheus (protegido por token Bearer dedicado)
+      operationId: prometheusMetrics
+      responses:
+        '200':
+          description: Métricas em formato de exposição Prometheus 0.0.4
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   /api/v1/auth/token:
     post:
       security: []

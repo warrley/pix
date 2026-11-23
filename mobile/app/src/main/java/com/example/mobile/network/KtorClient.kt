@@ -50,6 +50,7 @@ object KtorClient {
                 install(Logging) {
                     logger = Logger.DEFAULT
                     level = LogLevel.INFO
+                    sanitizeHeader { header -> header.equals(HttpHeaders.Authorization, ignoreCase = true) }
                 }
             }
 
