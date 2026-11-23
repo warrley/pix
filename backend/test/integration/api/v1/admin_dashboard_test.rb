@@ -8,7 +8,7 @@ class Api::V1::AdminDashboardTest < ActionDispatch::IntegrationTest
     @headers = { "Authorization" => "Bearer #{@token}" }
 
     @customer = users(:two)
-    @customer_account = accounts(:two)
+    @customer_account = Account.create!(user: @customer, balance: 500.0, status: "active")
   end
 
   test "operator can load admin overview with queues and insights" do
