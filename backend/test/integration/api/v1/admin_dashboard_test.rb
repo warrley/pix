@@ -12,8 +12,14 @@ class Api::V1::AdminDashboardTest < ActionDispatch::IntegrationTest
     get "/api/v1/admin/overview", headers: @headers, as: :json
 
     assert_response :ok
-    assert response.parsed_body["data"].key?("total_users")
-    assert response.parsed_body["data"].key?("total_moved_cents")
+    data = response.parsed_body["data"]
+    assert data.key?("total_users")
+    assert data.key?("total_moved_cents")
+    assert data.key?("total_balance_cents")
+    assert data.key?("average_ticket_cents")
+    assert data.key?("success_rate")
+    assert data.key?("pix_keys")
+    assert data.key?("scheduled_transfers")
   end
 
   test "operator can list users and transactions" do

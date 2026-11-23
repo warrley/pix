@@ -36,7 +36,10 @@ class ApiMetrics
     [ %r{\A/api/v1/transfers/[^/]+\z}, "/api/v1/transfers/:id" ],
     [ %r{\A/api/v1/transfers/[^/]+/cancel\z}, "/api/v1/transfers/:id/cancel" ],
     [ %r{\A/api/v1/transfers/[^/]+/refund\z}, "/api/v1/transfers/:id/refund" ],
-    [ %r{\A/api/v1/scheduled_transfers/[^/]+\z}, "/api/v1/scheduled_transfers/:id" ]
+    [ %r{\A/api/v1/scheduled_transfers/[^/]+\z}, "/api/v1/scheduled_transfers/:id" ],
+    [ %r{\A/api/v1/admin/overview\z}, "/api/v1/admin/overview" ],
+    [ %r{\A/api/v1/admin/users\z}, "/api/v1/admin/users" ],
+    [ %r{\A/api/v1/admin/transactions\z}, "/api/v1/admin/transactions" ]
   ].freeze
 
   def initialize(app, metrics_token: nil)

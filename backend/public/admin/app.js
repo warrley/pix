@@ -83,33 +83,58 @@ document.querySelectorAll(".nav-item").forEach(button => button.addEventListener
   if (button.dataset.view === "transactions") loadTransactions();
 }));
 
+document.getElementById("refresh-btn").addEventListener("click", () => {
+  const active = document.querySelector(".nav-item.active")?.dataset.view || "overview";
+  if (active === "overview") loadOverview();
+  if (active === "users") loadUsers(document.getElementById("user-search").value);
+  if (active === "transactions") loadTransactions(document.getElementById("status-filter").value);
+});
+
+function markUpdated() {
+  const el = document.getElementById("last-updated");
+  if (el) el.textContent = "Atualizado às " + new Intl.DateTimeFormat("pt-BR", { timeStyle: "medium" }).format(new Date());
+}
+
 async function loadOverview() {
   try {
     const data = await api("/admin/overview");
+    const pixKeys = data.pix_keys || { active: 0, suspended: 0, by_type: {} };
+    const scheduled = data.scheduled_transfers || { pending: 0, pending_amount_cents: 0 };
     const cards = [
       ["Usuários cadastrados", data.total_users, `${data.active_users} com conta ativa`, "active"],
-      ["Usuários online", data.online_users, "Sessões válidas", "active"],
-      ["Volume total", money(data.total_moved_cents), `${money(data.moved_today_cents)} hoje`, "active"],
-      ["Movimentações", data.total_transactions, `${data.transactions_today} feitas hoje`, "active"]
+      ["Usuários online", data.online_users, "Sessões válidas", "info"],
+      ["Contas & Bloqueios", data.active_accounts, `${data.blocked_accounts} bloqueadas por fraude`, data.blocked_accounts > 0 ? "warn" : "active"],
+      ["Saldo sob custódia", money(data.total_balance_cents), `${data.total_accounts} contas totais`, "info"],
+      ["Volume movimentado", money(data.total_moved_cents), `${money(data.moved_today_cents)} hoje`, "active"],
+      ["Ticket médio", money(data.average_ticket_cents), `${data.success_rate ?? 100}% de sucesso`, "active"],
+      ["Chaves PIX ativas", pixKeys.active, `${pixKeys.suspended} suspensas`, pixKeys.suspended > 0 ? "warn" : "active"],
+      ["Agendamentos", scheduled.pending, `${money(scheduled.pending_amount_cents)} pendentes`, "info"]
     ];
-    document.getElementById("stats-grid").innerHTML = cards.map(([label,value,note]) =>
-      `<article class="stat-card"><span class="stat-label">${escapeHtml(label)}</span><strong class="stat-value">${escapeHtml(value)}</strong><span class="stat-note">${escapeHtml(note)}</span></article>`).join("");
+    document.getElementById("stats-grid").innerHTML = cards.map(([label, value, note, tone]) =>
+      `<article class="stat-card"><span class="stat-label">${escapeHtml(label)}</span><strong class="stat-value">${escapeHtml(value)}</strong><span class="stat-note ${escapeHtml(tone)}">${escapeHtml(note)}</span></article>`).join("");
 
     const max = Math.max(...data.daily.map(item => item.amount_cents), 1);
     document.getElementById("volume-chart").innerHTML = data.daily.map(item => {
-      const height = Math.max(5, Math.round(item.amount_cents / max * 160));
+      const height = Math.max(5, Math.round(item.amount_cents / max * 140));
       const day = new Date(item.date + "T12:00:00").toLocaleDateString("pt-BR", { weekday:"short" }).replace(".","");
-      return `<div class="bar-column" title="${money(item.amount_cents)}"><div class="bar" style="height:${height}px"></div><span>${day}</span></div>`;
+      return `<div class="bar-column" title="${escapeHtml(money(item.amount_cents))} (${escapeHtml(item.count)} ops)"><span class="bar-count">${escapeHtml(item.count)}</span><div class="bar" style="height:${height}px"></div><span>${escapeHtml(day)}</span></div>`;
     }).join("");
 
     const totalStatus = Object.values(data.status_counts).reduce((sum, count) => sum + count, 0) || 1;
     const labels = {completed:"Concluídas",processing:"Processando",failed:"Falhas",cancelled:"Canceladas",refunded:"Estornadas"};
     document.getElementById("status-list").innerHTML = Object.entries(data.status_counts).map(([status,count]) =>
-      `<div class="status-row"><span>${labels[status] || status}</span><div class="status-track"><div class="status-fill" style="width:${count/totalStatus*100}%"></div></div><strong>${count}</strong></div>`).join("");
+      `<div class="status-row"><span>${escapeHtml(labels[status] || status)}</span><div class="status-track"><div class="status-fill ${escapeHtml(status)}" style="width:${count/totalStatus*100}%"></div></div><strong>${escapeHtml(count)}</strong></div>`).join("") || `<p class="last-updated">Sem transações.</p>`;
+
+    const keyEntries = Object.entries(pixKeys.by_type || {});
+    const totalKeys = keyEntries.reduce((sum, [, count]) => sum + count, 0) || 1;
+    const keyLabels = { cpf: "CPF", cnpj: "CNPJ", email: "E-mail", phone: "Telefone", random: "Aleatória" };
+    document.getElementById("keys-list").innerHTML = keyEntries.map(([type, count]) =>
+      `<div class="status-row"><span>${escapeHtml(keyLabels[type] || type)}</span><div class="status-track"><div class="status-fill keys" style="width:${count/totalKeys*100}%"></div></div><strong>${escapeHtml(count)}</strong></div>`).join("") || `<p class="last-updated">Nenhuma chave ativa.</p>`;
 
     document.getElementById("recent-rows").innerHTML = data.recent_transactions.map(item =>
       `<tr><td><strong>${escapeHtml(item.source.owner_name)}</strong><br><small>${escapeHtml(item.source.account_number)}</small></td><td>${escapeHtml(item.destination.owner_name)}<br><small>${escapeHtml(item.destination.account_number)}</small></td><td><strong>${escapeHtml(money(item.amount_cents))}</strong></td><td><span class="badge ${escapeHtml(item.status)}">${escapeHtml(item.status)}</span></td><td>${escapeHtml(dateTime(item.created_at))}</td></tr>`
     ).join("") || `<tr><td colspan="5">Nenhuma movimentação encontrada.</td></tr>`;
+    markUpdated();
   } catch (error) { alert(error.message); }
 }
 

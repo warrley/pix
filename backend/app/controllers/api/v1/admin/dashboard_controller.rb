@@ -11,6 +11,9 @@ module Api
           completed = Transaction.completed
           today = Time.current.beginning_of_day
           active_tokens = ApiAccessToken.active
+          completed_count = completed.count
+          total_moved = completed.sum(:amount_cents)
+          finished_count = Transaction.where(status: %w[completed failed]).count
 
           render_success({
             total_users: User.count,
@@ -19,10 +22,23 @@ module Api
             total_accounts: Account.count,
             active_accounts: Account.active.count,
             blocked_accounts: Account.where(fraud_blocked: true).count,
+            total_balance_cents: Account.sum(:balance_cents),
             total_transactions: Transaction.count,
             transactions_today: Transaction.where(created_at: today..Time.current).count,
-            total_moved_cents: completed.sum(:amount_cents),
+            total_moved_cents: total_moved,
             moved_today_cents: completed.where(created_at: today..Time.current).sum(:amount_cents),
+            average_ticket_cents: completed_count.positive? ? (total_moved / completed_count) : 0,
+            success_rate: finished_count.positive? ? ((completed_count.to_f / finished_count) * 100).round(1) : 100.0,
+            pix_keys: {
+              total: PixKey.count,
+              active: PixKey.active.count,
+              suspended: PixKey.suspended.count,
+              by_type: PixKey.active.group(:key_type).count
+            },
+            scheduled_transfers: {
+              pending: ScheduledTransfer.pending.count,
+              pending_amount_cents: ScheduledTransfer.pending.sum(:amount_cents)
+            },
             status_counts: Transaction.group(:status).count,
             recent_transactions: recent_transactions,
             daily: daily_volume
@@ -30,8 +46,8 @@ module Api
         end
 
         def users
-          per_page = [[params.fetch(:per_page, 20).to_i, 100].min, 1].max
-          page = [params.fetch(:page, 1).to_i, 1].max
+          per_page = [ [ params.fetch(:per_page, 20).to_i, 100 ].min, 1 ].max
+          page = [ params.fetch(:page, 1).to_i, 1 ].max
           users = User.includes(:accounts, :api_access_tokens).order(created_at: :desc)
           users = users.where("name ILIKE :search OR email ILIKE :search", search: "%#{params[:search].to_s.strip}%") if params[:search].present?
 
@@ -49,8 +65,8 @@ module Api
         end
 
         def transactions
-          per_page = [[params.fetch(:per_page, 20).to_i, 100].min, 1].max
-          page = [params.fetch(:page, 1).to_i, 1].max
+          per_page = [ [ params.fetch(:per_page, 20).to_i, 100 ].min, 1 ].max
+          page = [ params.fetch(:page, 1).to_i, 1 ].max
           transactions = Transaction.includes(source_account: :user, destination_account: :user).order(created_at: :desc)
           transactions = transactions.where(status: params[:status]) if Transaction.statuses.key?(params[:status])
 
