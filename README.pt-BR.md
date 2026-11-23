@@ -61,6 +61,17 @@ Defina `METRICS_BEARER_TOKEN`, `GRAFANA_ADMIN_USER` e `GRAFANA_ADMIN_PASSWORD` n
 - **Prometheus**: [http://127.0.0.1:9090](http://127.0.0.1:9090) (publicado apenas em loopback por padrão).
 - **Grafana**: [http://127.0.0.1:3001](http://127.0.0.1:3001) (autenticado com `GRAFANA_ADMIN_USER` / `GRAFANA_ADMIN_PASSWORD` definidos no `.env` — já vem com o datasource Prometheus e o dashboard **PIX — Observabilidade Completa** pré-provisionados em `ops/grafana/`).
 - **PostgreSQL Exporter**: `http://127.0.0.1:9187/metrics`
+O seed também cria exemplos de movimentações concluídas, canceladas, estornadas e com falha nos últimos sete dias.
+
+### Painel administrativo
+
+Com o backend em execução, acesse:
+
+- Painel: [http://localhost:3000/admin](http://localhost:3000/admin)
+- Operador: `alice.test@example.com`
+- Senha: `password123`
+
+O painel usa os endpoints protegidos `/api/v1/admin/*` e exige uma conta `operator` com os scopes `users:admin`, `accounts:admin` e `reports:read`.
 
 ---
 

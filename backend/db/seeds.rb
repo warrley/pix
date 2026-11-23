@@ -5,9 +5,11 @@ puts "== Semeando Banco de Dados para Desenvolvimento & Demonstração =="
 
 ActiveRecord::Base.transaction do
   # 1. Usuária Alice (Cliente / Operadora principal de testes)
-  alice = User.find_or_initialize_by(email: "alice.test@example.com")
+  alice = User.find_by(email: "alice.test@example.com") || User.find_by(email: "husky.test@example.com")
+  alice ||= User.new
   alice.assign_attributes(
     name: "Alice Silva",
+    email: "alice.test@example.com",
     doc_id: "68072551019", # CPF válido com dígitos verificadores corretos
     phone: "+5585999990001",
     password: "password123",
@@ -54,12 +56,48 @@ ActiveRecord::Base.transaction do
     k.status = "active"
   end
 
-  PixKey.find_or_create_by!(account: acc_alice, key_value: "alice.test@example.com") do |k|
-    k.key_type = "email"
-    k.status = "active"
+  pix_key_alice = PixKey.find_by(account: acc_alice, key_value: "husky.test@example.com")
+  pix_key_alice ||= PixKey.find_by(account: acc_alice, key_value: "alice.test@example.com")
+  pix_key_alice ||= PixKey.new(account: acc_alice)
+  pix_key_alice.assign_attributes(
+    account: acc_alice,
+    key_value: "alice.test@example.com",
+    key_type: "email",
+    status: "active"
+  )
+  pix_key_alice.save!
+
+  # 6. Movimentações de demonstração
+  demo_transactions = [
+    { days_ago: 6, source: acc_bob, destination: acc_alice, amount_cents: 12500, status: "completed", description: "Pagamento de serviço" },
+    { days_ago: 5, source: acc_alice, destination: acc_bob, amount_cents: 8750, status: "completed", description: "Reembolso de almoço" },
+    { days_ago: 4, source: acc_bob, destination: acc_alice, amount_cents: 42000, status: "completed", description: "Venda de produto" },
+    { days_ago: 3, source: acc_alice, destination: acc_bob, amount_cents: 25000, status: "refunded", description: "Compra cancelada" },
+    { days_ago: 2, source: acc_bob, destination: acc_alice, amount_cents: 18990, status: "completed", description: "Assinatura mensal" },
+    { days_ago: 1, source: acc_alice, destination: acc_bob, amount_cents: 500000, status: "failed", description: "Transferência recusada", failure_reason: "Saldo insuficiente" },
+    { days_ago: 0, source: acc_bob, destination: acc_alice, amount_cents: 7500, status: "completed", description: "Pix recebido" },
+    { days_ago: 0, source: acc_alice, destination: acc_bob, amount_cents: 3200, status: "cancelled", description: "Pix cancelado pelo usuário" }
+  ]
+
+  demo_transactions.each_with_index do |demo, index|
+    end_to_end_id = format("E01011010%020d%03d", 202611230000 + index, index + 1)
+    transaction = Transaction.find_or_initialize_by(end_to_end_id: end_to_end_id)
+    timestamp = demo[:days_ago].days.ago.change(hour: 9 + index, min: 15)
+    transaction.assign_attributes(
+      source_account: demo[:source],
+      destination_account: demo[:destination],
+      pix_key_used: demo[:destination] == acc_alice ? "alice.test@example.com" : "bob.test@example.com",
+      amount_cents: demo[:amount_cents],
+      description: demo[:description],
+      status: demo[:status],
+      failure_reason: demo[:failure_reason],
+      created_at: timestamp,
+      updated_at: timestamp
+    )
+    transaction.save!
   end
 
-  # 6. Emissão de Tokens Pré-configurados para a Collection do Postman
+  # 7. Emissão de Tokens Pré-configurados para a Collection do Postman
   scopes = ApiAccessToken::OPERATOR_SCOPES
   raw_token, _ = ApiAccessToken.issue!(user: alice, scopes: scopes)
 
