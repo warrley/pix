@@ -100,6 +100,18 @@ async function loadOverview() {
     const data = await api("/admin/overview");
     const pixKeys = data.pix_keys || { active: 0, suspended: 0, by_type: {} };
     const scheduled = data.scheduled_transfers || { pending: 0, pending_amount_cents: 0 };
+    const insights = data.insights || {};
+    const trendPct = Number(insights.today_vs_avg_pct || 0);
+    const trendLabel = trendPct > 0 ? `+${trendPct}% vs média 7d` : `${trendPct}% vs média 7d`;
+    const insightCards = [
+      ["Tendência hoje", `${trendLabel} (${money(insights.daily_avg_cents || 0)}/dia)`, trendPct >= 0 ? "up" : "warn"],
+      ["Maior transferência", money(insights.max_transaction_cents || 0), "info"],
+      ["Estornos & Risco", `${insights.refund_rate ?? 0}% (${money(insights.refunded_cents || 0)})`, (insights.refund_rate || 0) > 10 ? "warn" : "info"],
+      ["Saldo bloqueado / DICT", `${money(insights.blocked_balance_cents || 0)} · ${insights.avg_keys_per_account ?? 0} chaves/conta`, (insights.blocked_balance_cents || 0) > 0 ? "warn" : "up"]
+    ];
+    document.getElementById("insights-strip").innerHTML = insightCards.map(([title, value, tone]) =>
+      `<div class="insight-pill ${escapeHtml(tone)}"><span>${escapeHtml(title)}</span><strong>${escapeHtml(value)}</strong></div>`).join("");
+
     const cards = [
       ["Usuários cadastrados", data.total_users, `${data.active_users} com conta ativa`, "active"],
       ["Usuários online", data.online_users, "Sessões válidas", "info"],
@@ -130,6 +142,17 @@ async function loadOverview() {
     const keyLabels = { cpf: "CPF", cnpj: "CNPJ", email: "E-mail", phone: "Telefone", random: "Aleatória" };
     document.getElementById("keys-list").innerHTML = keyEntries.map(([type, count]) =>
       `<div class="status-row"><span>${escapeHtml(keyLabels[type] || type)}</span><div class="status-track"><div class="status-fill keys" style="width:${count/totalKeys*100}%"></div></div><strong>${escapeHtml(count)}</strong></div>`).join("") || `<p class="last-updated">Nenhuma chave ativa.</p>`;
+
+    const failures = data.top_failure_reasons || [];
+    const totalFailures = failures.reduce((sum, item) => sum + item.count, 0) || 1;
+    document.getElementById("failure-reasons-list").innerHTML = failures.map(item =>
+      `<div class="failure-row" title="${escapeHtml(item.reason)}"><span>${escapeHtml(item.reason)}</span><div class="status-track"><div class="status-fill failed" style="width:${item.count/totalFailures*100}%"></div></div><strong>${escapeHtml(item.count)}</strong></div>`
+    ).join("") || `<p class="last-updated">Nenhuma falha registrada.</p>`;
+
+    const topAccounts = data.top_accounts || [];
+    document.getElementById("top-accounts-rows").innerHTML = topAccounts.map(acc =>
+      `<tr><td><strong>${escapeHtml(acc.owner_name)}</strong></td><td><small>${escapeHtml(acc.account_number)}</small></td><td>${escapeHtml(acc.tx_count)}</td><td><strong>${escapeHtml(money(acc.sent_cents))}</strong></td><td>${escapeHtml(money(acc.balance_cents))}</td></tr>`
+    ).join("") || `<tr><td colspan="5">Nenhuma movimentação concluída.</td></tr>`;
 
     document.getElementById("recent-rows").innerHTML = data.recent_transactions.map(item =>
       `<tr><td><strong>${escapeHtml(item.source.owner_name)}</strong><br><small>${escapeHtml(item.source.account_number)}</small></td><td>${escapeHtml(item.destination.owner_name)}<br><small>${escapeHtml(item.destination.account_number)}</small></td><td><strong>${escapeHtml(money(item.amount_cents))}</strong></td><td><span class="badge ${escapeHtml(item.status)}">${escapeHtml(item.status)}</span></td><td>${escapeHtml(dateTime(item.created_at))}</td></tr>`

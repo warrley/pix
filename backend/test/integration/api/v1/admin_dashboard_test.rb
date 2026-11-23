@@ -20,6 +20,9 @@ class Api::V1::AdminDashboardTest < ActionDispatch::IntegrationTest
     assert data.key?("success_rate")
     assert data.key?("pix_keys")
     assert data.key?("scheduled_transfers")
+    assert data.key?("insights")
+    assert data.key?("top_failure_reasons")
+    assert data.key?("top_accounts")
   end
 
   test "operator can list users and transactions" do

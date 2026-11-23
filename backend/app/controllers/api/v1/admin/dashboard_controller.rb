@@ -13,25 +13,32 @@ module Api
           active_tokens = ApiAccessToken.active
           completed_count = completed.count
           total_moved = completed.sum(:amount_cents)
+          moved_today = completed.where(created_at: today..Time.current).sum(:amount_cents)
           finished_count = Transaction.where(status: %w[completed failed]).count
+          daily_series = daily_volume
+          daily_avg_cents = (daily_series.sum { |d| d[:amount_cents] } / 7.0).round
+          active_accounts_count = Account.active.count
+          active_keys_count = PixKey.active.count
+          refunded_count = Transaction.refunded.count
+          settled_total = completed_count + refunded_count
 
           render_success({
             total_users: User.count,
             active_users: User.joins(:accounts).merge(Account.active).distinct.count,
             online_users: active_tokens.distinct.count(:user_id),
             total_accounts: Account.count,
-            active_accounts: Account.active.count,
+            active_accounts: active_accounts_count,
             blocked_accounts: Account.where(fraud_blocked: true).count,
             total_balance_cents: Account.sum(:balance_cents),
             total_transactions: Transaction.count,
             transactions_today: Transaction.where(created_at: today..Time.current).count,
             total_moved_cents: total_moved,
-            moved_today_cents: completed.where(created_at: today..Time.current).sum(:amount_cents),
+            moved_today_cents: moved_today,
             average_ticket_cents: completed_count.positive? ? (total_moved / completed_count) : 0,
             success_rate: finished_count.positive? ? ((completed_count.to_f / finished_count) * 100).round(1) : 100.0,
             pix_keys: {
               total: PixKey.count,
-              active: PixKey.active.count,
+              active: active_keys_count,
               suspended: PixKey.suspended.count,
               by_type: PixKey.active.group(:key_type).count
             },
@@ -39,9 +46,21 @@ module Api
               pending: ScheduledTransfer.pending.count,
               pending_amount_cents: ScheduledTransfer.pending.sum(:amount_cents)
             },
+            insights: {
+              daily_avg_cents: daily_avg_cents,
+              today_vs_avg_pct: daily_avg_cents.positive? ? (((moved_today - daily_avg_cents).to_f / daily_avg_cents) * 100).round(1) : 0.0,
+              max_transaction_cents: completed.maximum(:amount_cents) || 0,
+              refunded_cents: Transaction.refunded.sum(:amount_cents),
+              refund_rate: settled_total.positive? ? ((refunded_count.to_f / settled_total) * 100).round(1) : 0.0,
+              blocked_balance_cents: Account.where(fraud_blocked: true).sum(:balance_cents),
+              geolocated_transactions: Transaction.where.not(latitude: nil, longitude: nil).count,
+              avg_keys_per_account: active_accounts_count.positive? ? (active_keys_count.to_f / active_accounts_count).round(2) : 0.0
+            },
+            top_failure_reasons: top_failure_reasons,
+            top_accounts: top_accounts,
             status_counts: Transaction.group(:status).count,
             recent_transactions: recent_transactions,
-            daily: daily_volume
+            daily: daily_series
           })
         end
 
@@ -141,6 +160,38 @@ module Api
             account_number: account.account_number,
             owner_name: account.user.name
           }
+        end
+
+        def top_failure_reasons
+          Transaction.failed
+            .where.not(failure_reason: [ nil, "" ])
+            .group(:failure_reason)
+            .order(Arel.sql("COUNT(*) DESC"))
+            .limit(5)
+            .count
+            .map { |reason, count| { reason: reason, count: count } }
+        end
+
+        def top_accounts
+          outgoing = Transaction.completed
+            .group(:source_account_id)
+            .order(Arel.sql("SUM(amount_cents) DESC"))
+            .limit(5)
+            .pluck(:source_account_id, Arel.sql("SUM(amount_cents)"), Arel.sql("COUNT(*)"))
+
+          accounts_by_id = Account.includes(:user).where(id: outgoing.map(&:first)).index_by(&:id)
+          outgoing.filter_map do |account_id, sent_cents, tx_count|
+            account = accounts_by_id[account_id]
+            next unless account
+
+            {
+              account_number: account.account_number,
+              owner_name: account.user.name,
+              sent_cents: sent_cents.to_i,
+              tx_count: tx_count.to_i,
+              balance_cents: account.balance_cents
+            }
+          end
         end
       end
     end

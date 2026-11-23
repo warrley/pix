@@ -54,6 +54,7 @@
       </header>
 
       <div id="view-overview" class="view">
+        <section class="insights-strip" id="insights-strip" aria-label="Insights operacionais"></section>
         <section class="stats-grid" id="stats-grid"></section>
         <section class="analytics-grid">
           <article class="panel chart-panel">
@@ -67,6 +68,16 @@
           <article class="panel keys-panel">
             <div class="panel-heading"><div><p class="eyebrow">Diretório DICT</p><h2>Chaves PIX por tipo</h2></div></div>
             <div id="keys-list" class="status-list"></div>
+          </article>
+        </section>
+        <section class="insights-grid">
+          <article class="panel">
+            <div class="panel-heading"><div><p class="eyebrow">Diagnóstico</p><h2>Principais motivos de falha</h2></div></div>
+            <div id="failure-reasons-list" class="status-list"></div>
+          </article>
+          <article class="panel">
+            <div class="panel-heading"><div><p class="eyebrow">Ranking (Concluídas)</p><h2>Top contas por volume enviado</h2></div></div>
+            <div class="table-wrap" tabindex="0" role="region" aria-label="Top contas por volume"><table><thead><tr><th>Titular</th><th>Conta</th><th>Ops</th><th>Total enviado</th><th>Saldo atual</th></tr></thead><tbody id="top-accounts-rows"></tbody></table></div>
           </article>
         </section>
         <article class="panel">
