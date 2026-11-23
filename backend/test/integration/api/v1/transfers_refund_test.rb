@@ -8,6 +8,9 @@ class Api::V1::TransfersRefundTest < ActionDispatch::IntegrationTest
     @user2 = User.new(name: "Receiver", email: "receiver_api_refund@example.com", doc_id: "33734063071")
     @user2.save!(validate: false)
 
+    @operator = User.new(name: "Admin Operator", email: "operator_api_refund@example.com", doc_id: "52998224725", role: "operator")
+    @operator.save!(validate: false)
+
     @source = Account.create!(user: @user1, account_number: "55011", balance: 400.0)
     @destination = Account.create!(user: @user2, account_number: "55022", balance: 300.0)
 
@@ -22,27 +25,35 @@ class Api::V1::TransfersRefundTest < ActionDispatch::IntegrationTest
     authenticate_requests_as(@user1)
   end
 
-  test "should refund a completed transaction and return 200 OK with receipt" do
+  test "customer refund creates a pending refund request and does not move balances immediately" do
     post "/api/v1/transfers/#{@transaction.id}/refund",
-      params: { reason: "Fraudulent charge detected" },
+      params: { reason: "Fraudulent charge detected", category: "fraud" },
       as: :json
 
-    assert_response :success
+    assert_response :accepted
 
     data = response.parsed_body["data"]
-    assert_equal "refunded", data["status"]
-    assert_not_nil data["refunded_at"]
-    assert_equal "100.00", data["amount"]
-
-    event = @transaction.transaction_events.order(:id).last
-    assert_equal "completed", event.previous_status
-    assert_equal "refunded", event.current_status
-    assert_equal "Fraudulent charge detected", event.reason
+    assert_equal "pending", data.dig("refund_request", "status")
+    assert_equal "fraud", data.dig("refund_request", "category")
+    assert_equal "completed", data.dig("transaction", "status")
 
     @source.reload
     @destination.reload
-    assert_equal 500.0, @source.balance
-    assert_equal 200.0, @destination.balance
+    assert_equal 400.0, @source.balance
+    assert_equal 300.0, @destination.balance
+  end
+
+  test "duplicate pending refund request returns 422 Unprocessable Entity" do
+    post "/api/v1/transfers/#{@transaction.id}/refund",
+      params: { reason: "First request" },
+      as: :json
+    assert_response :accepted
+
+    post "/api/v1/transfers/#{@transaction.id}/refund",
+      params: { reason: "Second request" },
+      as: :json
+    assert_response :unprocessable_entity
+    assert_equal "refund.invalid_request", response.parsed_body["code"]
   end
 
   test "should return 422 Unprocessable Entity if reason is missing" do
@@ -67,16 +78,42 @@ class Api::V1::TransfersRefundTest < ActionDispatch::IntegrationTest
     assert_equal "transaction.not_found", json_response["code"]
   end
 
-  test "should return 422 if destination has insufficient balance" do
+  test "operator approving refund request refunds transaction and updates balances" do
+    post "/api/v1/transfers/#{@transaction.id}/refund",
+      params: { reason: "Fraudulent charge detected" },
+      as: :json
+    assert_response :accepted
+    request_id = response.parsed_body.dig("data", "refund_request", "id")
+
+    authenticate_requests_as(@operator)
+    post "/api/v1/admin/refund_requests/#{request_id}/approve",
+      params: { decision_note: "Confirmed fraud" },
+      as: :json
+
+    assert_response :ok
+    assert_equal "approved", response.parsed_body.dig("data", "status")
+    assert_equal "refunded", @transaction.reload.status
+
+    @source.reload
+    @destination.reload
+    assert_equal 500.0, @source.balance
+    assert_equal 200.0, @destination.balance
+  end
+
+  test "operator approving refund request returns 422 if destination has insufficient balance" do
     @destination.update!(balance: 20.0)
 
     post "/api/v1/transfers/#{@transaction.id}/refund",
       params: { reason: "Insufficient balance at destination" },
       as: :json
+    assert_response :accepted
+    request_id = response.parsed_body.dig("data", "refund_request", "id")
+
+    authenticate_requests_as(@operator)
+    post "/api/v1/admin/refund_requests/#{request_id}/approve", as: :json
 
     assert_response :unprocessable_entity
-
-    json_response = response.parsed_body
-    assert_equal "refund.insufficient_funds", json_response["code"]
+    assert_equal "refund.insufficient_funds", response.parsed_body["code"]
+    assert_equal "pending", RefundRequest.find(request_id).status
   end
 end

@@ -37,9 +37,20 @@ class ApiMetrics
     [ %r{\A/api/v1/transfers/[^/]+/cancel\z}, "/api/v1/transfers/:id/cancel" ],
     [ %r{\A/api/v1/transfers/[^/]+/refund\z}, "/api/v1/transfers/:id/refund" ],
     [ %r{\A/api/v1/scheduled_transfers/[^/]+\z}, "/api/v1/scheduled_transfers/:id" ],
+    [ %r{\A/api/v1/fraud_reports\z}, "/api/v1/fraud_reports" ],
     [ %r{\A/api/v1/admin/overview\z}, "/api/v1/admin/overview" ],
     [ %r{\A/api/v1/admin/users\z}, "/api/v1/admin/users" ],
-    [ %r{\A/api/v1/admin/transactions\z}, "/api/v1/admin/transactions" ]
+    [ %r{\A/api/v1/admin/users/[^/]+\z}, "/api/v1/admin/users/:id" ],
+    [ %r{\A/api/v1/admin/users/[^/]+/revoke_sessions\z}, "/api/v1/admin/users/:id/revoke_sessions" ],
+    [ %r{\A/api/v1/admin/accounts/[^/]+/(?:block_fraud|unblock_fraud|limit|close|reopen)\z}, "/api/v1/admin/accounts/:id/:action" ],
+    [ %r{\A/api/v1/admin/transactions\z}, "/api/v1/admin/transactions" ],
+    [ %r{\A/api/v1/admin/audit_logs\z}, "/api/v1/admin/audit_logs" ],
+    [ %r{\A/api/v1/admin/refund_requests\z}, "/api/v1/admin/refund_requests" ],
+    [ %r{\A/api/v1/admin/refund_requests/[^/]+/(?:approve|reject)\z}, "/api/v1/admin/refund_requests/:id/:action" ],
+    [ %r{\A/api/v1/admin/fraud_reports\z}, "/api/v1/admin/fraud_reports" ],
+    [ %r{\A/api/v1/admin/fraud_reports/[^/]+/resolve\z}, "/api/v1/admin/fraud_reports/:id/resolve" ],
+    [ %r{\A/api/v1/admin/pix_keys\z}, "/api/v1/admin/pix_keys" ],
+    [ %r{\A/api/v1/admin/pix_keys/[^/]+(?:/(?:unblock|suspend))?\z}, "/api/v1/admin/pix_keys/:id" ]
   ].freeze
 
   def initialize(app, metrics_token: nil)

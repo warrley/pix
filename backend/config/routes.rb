@@ -16,7 +16,39 @@ Rails.application.routes.draw do
         get "overview", to: "dashboard#overview"
         get "users", to: "dashboard#users"
         get "transactions", to: "dashboard#transactions"
+        get "audit_logs", to: "dashboard#audit_logs"
+
+        resources :users, only: [ :show, :update ] do
+          post :revoke_sessions, on: :member
+        end
+        resources :accounts, only: [] do
+          member do
+            patch :block_fraud
+            patch :unblock_fraud
+            patch :limit, to: "accounts#update_limit"
+            patch :close
+            patch :reopen
+          end
+        end
+        resources :refund_requests, only: [ :index ] do
+          member do
+            post :approve
+            post :reject
+          end
+        end
+        resources :fraud_reports, only: [ :index ] do
+          member do
+            patch :resolve
+          end
+        end
+        resources :pix_keys, only: [ :index, :destroy ] do
+          member do
+            patch :unblock
+            patch :suspend
+          end
+        end
       end
+      resources :fraud_reports, only: [ :index, :create ]
       post "auth/token", to: "auth#create", as: :auth_token
       post "auth/signup", to: "auth#signup", as: :auth_signup
       delete "auth/token", to: "auth#destroy"

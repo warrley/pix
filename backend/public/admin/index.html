@@ -31,8 +31,12 @@
       <div class="brand"><span class="brand-mark small">P</span><span>Pix Admin</span></div>
       <nav>
         <button class="nav-item active" data-view="overview"><span>⌂</span>Visão geral</button>
+        <button class="nav-item" data-view="refunds"><span>↩</span>Estornos / MED <em id="badge-refunds" class="nav-badge hidden">0</em></button>
+        <button class="nav-item" data-view="reports"><span>⚑</span>Denúncias <em id="badge-reports" class="nav-badge hidden">0</em></button>
         <button class="nav-item" data-view="users"><span>♙</span>Usuários</button>
+        <button class="nav-item" data-view="keys"><span>⚿</span>Chaves PIX</button>
         <button class="nav-item" data-view="transactions"><span>↔</span>Movimentações</button>
+        <button class="nav-item" data-view="audit"><span>⛨</span>Auditoria</button>
       </nav>
       <button id="logout" class="logout">Sair</button>
     </aside>
@@ -86,13 +90,46 @@
         </article>
       </div>
 
+      <div id="view-refunds" class="view hidden">
+        <article class="panel">
+          <div class="panel-heading toolbar">
+            <div><p class="eyebrow">Mecanismo Especial de Devolução</p><h2>Solicitações de estorno</h2></div>
+            <select id="refund-status-filter"><option value="pending">Pendentes</option><option value="">Todos os status</option><option value="approved">Aprovados</option><option value="rejected">Rejeitados</option></select>
+          </div>
+          <div class="table-wrap" tabindex="0" role="region" aria-label="Solicitações de estorno"><table><thead><tr><th>ID / Data</th><th>Solicitante</th><th>Origem → Destino</th><th>Valor / Saldo Dest.</th><th>Motivo</th><th>Status</th><th>Ações</th></tr></thead><tbody id="refunds-rows"></tbody></table></div>
+        </article>
+      </div>
+
+      <div id="view-reports" class="view hidden">
+        <article class="panel">
+          <div class="panel-heading toolbar">
+            <div><p class="eyebrow">Prevenção à fraude</p><h2>Denúncias e contas reportadas</h2></div>
+            <select id="report-status-filter"><option value="pending">Pendentes</option><option value="">Todas</option><option value="under_review">Em análise</option><option value="resolved">Resolvidas</option><option value="dismissed">Arquivadas</option></select>
+          </div>
+          <div class="table-wrap" tabindex="0" role="region" aria-label="Denúncias de fraude"><table><thead><tr><th>ID / Data</th><th>Denunciante</th><th>Conta Denunciada</th><th>Categoria / Descrição</th><th>Reports / Risco</th><th>Status</th><th>Ações</th></tr></thead><tbody id="reports-rows"></tbody></table></div>
+        </article>
+      </div>
+
       <div id="view-users" class="view hidden">
         <article class="panel">
           <div class="panel-heading toolbar">
             <div><p class="eyebrow">Base cadastral</p><h2>Usuários</h2></div>
             <input id="user-search" type="search" placeholder="Buscar por nome ou e-mail">
           </div>
-          <div class="table-wrap" tabindex="0" role="region" aria-label="Lista de usuários"><table><thead><tr><th>Usuário</th><th>Papel</th><th>Status</th><th>Contas</th><th>Saldo total</th><th>Última atividade</th></tr></thead><tbody id="users-rows"></tbody></table></div>
+          <div class="table-wrap" tabindex="0" role="region" aria-label="Lista de usuários"><table><thead><tr><th>Usuário</th><th>Papel</th><th>Status</th><th>Contas</th><th>Saldo total</th><th>Última atividade</th><th>Ações</th></tr></thead><tbody id="users-rows"></tbody></table></div>
+        </article>
+      </div>
+
+      <div id="view-keys" class="view hidden">
+        <article class="panel">
+          <div class="panel-heading toolbar">
+            <div><p class="eyebrow">Diretório DICT</p><h2>Chaves PIX</h2></div>
+            <div class="toolbar-group">
+              <input id="key-search" type="search" placeholder="Buscar chave">
+              <select id="key-status-filter"><option value="">Todos os status</option><option value="active">Ativas</option><option value="suspended">Suspensas</option><option value="cancelled">Canceladas</option></select>
+            </div>
+          </div>
+          <div class="table-wrap" tabindex="0" role="region" aria-label="Lista de chaves PIX"><table><thead><tr><th>Tipo</th><th>Chave</th><th>Titular / Conta</th><th>Status</th><th>Criada em</th><th>Ações</th></tr></thead><tbody id="keys-rows"></tbody></table></div>
         </article>
       </div>
 
@@ -105,8 +142,24 @@
           <div class="table-wrap" tabindex="0" role="region" aria-label="Lista de movimentações"><table><thead><tr><th>ID</th><th>Origem</th><th>Destino</th><th>Valor</th><th>Status</th><th>Data</th></tr></thead><tbody id="transactions-rows"></tbody></table></div>
         </article>
       </div>
+
+      <div id="view-audit" class="view hidden">
+        <article class="panel">
+          <div class="panel-heading"><div><p class="eyebrow">Compliance & Rastreabilidade</p><h2>Log de auditoria administrativa</h2></div></div>
+          <div class="table-wrap" tabindex="0" role="region" aria-label="Log de auditoria"><table><thead><tr><th>Data</th><th>Operador</th><th>Ação</th><th>Alvo</th><th>Detalhes</th><th>IP</th></tr></thead><tbody id="audit-rows"></tbody></table></div>
+        </article>
+      </div>
     </section>
   </div>
+
+  <dialog id="admin-modal" aria-labelledby="admin-modal-title">
+    <div class="modal-header">
+      <h2 id="admin-modal-title">Detalhes</h2>
+      <form method="dialog"><button class="modal-close" aria-label="Fechar">✕</button></form>
+    </div>
+    <div id="admin-modal-body" class="modal-body"></div>
+  </dialog>
+
   <script src="/admin/app.js"></script>
 </body>
 </html>

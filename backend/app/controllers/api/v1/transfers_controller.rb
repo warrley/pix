@@ -76,13 +76,29 @@ module Api
           return render_error("Reason is required to refund a transaction", status: :unprocessable_entity, code: "refund.missing_reason")
         end
 
-        result = Pix::RefundService.call(transaction_id: params[:id], reason: params[:reason])
+        refund_request = RefundRequest.new(
+          pix_transaction: transaction,
+          requested_by: current_user,
+          category: params[:category].presence || "disagreement",
+          reason: params[:reason].to_s.strip
+        )
 
-        if result.success?
-          Security::AuditLogger.record(event: "transfer_refunded", actor: current_user, resource: result.transaction, request: request)
-          render_success(receipt_data(result.transaction))
+        if refund_request.save
+          Security::AuditLogger.record(event: "refund_requested", actor: current_user, resource: refund_request, request: request)
+          render_success({
+            refund_request: {
+              id: refund_request.id,
+              transaction_id: refund_request.transaction_id,
+              status: refund_request.status,
+              category: refund_request.category,
+              reason: refund_request.reason,
+              created_at: refund_request.created_at
+            },
+            transaction: receipt_data(transaction),
+            message: "Refund request submitted for administrative review"
+          }, status: :accepted)
         else
-          render_error(result.error)
+          render_error(refund_request.errors.full_messages.to_sentence, status: :unprocessable_entity, code: "refund.invalid_request")
         end
       end
 

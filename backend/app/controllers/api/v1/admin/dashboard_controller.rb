@@ -1,12 +1,7 @@
 module Api
   module V1
     module Admin
-      class DashboardController < ApplicationController
-        before_action :authorize_operator!
-        before_action -> { require_api_scope!("users:admin") }
-        before_action -> { require_api_scope!("accounts:admin") }
-        before_action -> { require_api_scope!("reports:read") }
-
+      class DashboardController < BaseController
         def overview
           completed = Transaction.completed
           today = Time.current.beginning_of_day
@@ -45,6 +40,11 @@ module Api
             scheduled_transfers: {
               pending: ScheduledTransfer.pending.count,
               pending_amount_cents: ScheduledTransfer.pending.sum(:amount_cents)
+            },
+            queues: {
+              pending_refund_requests: RefundRequest.pending.count,
+              pending_fraud_reports: FraudReport.pending.count,
+              suspended_pix_keys: PixKey.suspended.count
             },
             insights: {
               daily_avg_cents: daily_avg_cents,
@@ -93,6 +93,35 @@ module Api
           paginated = transactions.offset((page - 1) * per_page).limit(per_page)
           render_success({
             items: paginated.map { |transaction| transaction_admin_data(transaction) },
+            pagination: {
+              page: page,
+              per_page: per_page,
+              total: total,
+              total_pages: (total.to_f / per_page).ceil
+            }
+          })
+        end
+
+        def audit_logs
+          page, per_page = pagination_params
+          logs = AdminAuditLog.includes(:operator).order(created_at: :desc)
+          total = logs.count
+          paginated = logs.offset((page - 1) * per_page).limit(per_page)
+
+          render_success({
+            items: paginated.map do |log|
+              {
+                id: log.id,
+                action: log.action,
+                target_type: log.target_type,
+                target_id: log.target_id,
+                details: log.details,
+                ip_address: log.ip_address,
+                operator_name: log.operator.name,
+                operator_email: log.operator.email,
+                created_at: log.created_at.iso8601
+              }
+            end,
             pagination: {
               page: page,
               per_page: per_page,

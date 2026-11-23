@@ -97,6 +97,25 @@ ActiveRecord::Base.transaction do
     transaction.save!
   end
 
+  completed_demo_tx = Transaction.find_by(end_to_end_id: format("E01011010%020d%03d", 202611230001, 2))
+  if completed_demo_tx&.completed? && !RefundRequest.where(transaction_id: completed_demo_tx.id, status: "pending").exists?
+    RefundRequest.create!(
+      pix_transaction: completed_demo_tx,
+      requested_by: alice,
+      category: "operational_error",
+      reason: "Transferência enviada em duplicidade para demonstração"
+    )
+  end
+
+  unless FraudReport.where(reporter: bob, reported_account: acc_alice, status: "pending").exists?
+    FraudReport.create!(
+      reporter: bob,
+      reported_account: acc_alice,
+      category: "suspicious_activity",
+      description: "Denúncia de demonstração para análise no painel administrativo"
+    )
+  end
+
   # 7. Emissão de Tokens Pré-configurados para a Collection do Postman
   scopes = ApiAccessToken::OPERATOR_SCOPES
   raw_token, _ = ApiAccessToken.issue!(user: alice, scopes: scopes)
