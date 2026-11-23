@@ -42,16 +42,24 @@ module Api
         end
 
         def update
-          permitted = params.permit(:name, :phone, :role)
-          if permitted[:role].present? && @user.id == current_user.id && permitted[:role] != current_user.role
-            return render_error("Cannot change your own administrative role", status: :unprocessable_entity)
+          permitted = params.permit(:name, :phone)
+          new_role = params[:role].to_s.presence
+          if new_role.present?
+            if @user.id == current_user.id && new_role != current_user.role
+              return render_error("Cannot change your own administrative role", status: :unprocessable_entity)
+            end
+            unless %w[customer operator].include?(new_role)
+              return render_error("Invalid role", status: :unprocessable_entity)
+            end
+
+            @user.role = new_role
           end
 
           if @user.update(permitted)
             log_admin_action!(
               action: "user_updated",
               target: @user,
-              details: permitted.to_h
+              details: permitted.to_h.merge(role: @user.role)
             )
             render_success({
               id: @user.id,
