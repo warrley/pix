@@ -5,7 +5,7 @@ class Api::V1::AdminDashboardTest < ActionDispatch::IntegrationTest
     @operator = users(:one)
     @operator.update!(role: "operator")
     @token = ApiAccessToken.issue!(user: @operator).first
-    @headers = bearer_headers(@token)
+    @headers = { "Authorization" => "Bearer #{@token}" }
   end
 
   test "operator can load admin overview" do
@@ -36,7 +36,7 @@ class Api::V1::AdminDashboardTest < ActionDispatch::IntegrationTest
     customer = users(:two)
     token = ApiAccessToken.issue!(user: customer).first
 
-    get "/api/v1/admin/overview", headers: bearer_headers(token), as: :json
+    get "/api/v1/admin/overview", headers: { "Authorization" => "Bearer #{token}" }, as: :json
 
     assert_response :forbidden
   end
