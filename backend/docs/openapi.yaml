@@ -474,6 +474,56 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationError'
 
+  /api/v1/pix_keys/{id}/unblock:
+    parameters:
+      - $ref: '#/components/parameters/PixKeyId'
+    patch:
+      tags: [PIX keys]
+      summary: Desbloqueia uma chave PIX suspensa
+      operationId: unblockPixKey
+      responses:
+        '200':
+          description: Chave PIX desbloqueada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PixKeyResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/v1/pix_keys/{id}/reassociate:
+    parameters:
+      - $ref: '#/components/parameters/PixKeyId'
+    patch:
+      tags: [PIX keys]
+      summary: Reassocia chave PIX para outra conta do mesmo titular (portabilidade)
+      operationId: reassociatePixKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [account_id]
+              properties:
+                account_id:
+                  type: integer
+                  description: ID da nova conta de destino do mesmo titular
+                  example: 2
+      responses:
+        '200':
+          description: Chave PIX reassociada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PixKeyResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
   /api/v1/accounts/{account_id}/transfers:
     parameters:
       - $ref: '#/components/parameters/AccountIdPath'

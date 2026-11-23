@@ -31,6 +31,7 @@ class ApiMetrics
     [ %r{\A/api/v1/pix_keys/lookup\z}, "/api/v1/pix_keys/lookup" ],
     [ %r{\A/api/v1/pix_keys/[^/]+\z}, "/api/v1/pix_keys/:id" ],
     [ %r{\A/api/v1/pix_keys/[^/]+/unblock\z}, "/api/v1/pix_keys/:id/unblock" ],
+    [ %r{\A/api/v1/pix_keys/[^/]+/reassociate\z}, "/api/v1/pix_keys/:id/reassociate" ],
     [ %r{\A/api/v1/transfers\z}, "/api/v1/transfers" ],
     [ %r{\A/api/v1/transfers/[^/]+\z}, "/api/v1/transfers/:id" ],
     [ %r{\A/api/v1/transfers/[^/]+/cancel\z}, "/api/v1/transfers/:id/cancel" ],
