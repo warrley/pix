@@ -1,4 +1,6 @@
 Rails.application.routes.draw do
+  get "admin", to: redirect("/admin/index.html")
+
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
@@ -10,6 +12,11 @@ Rails.application.routes.draw do
 
   namespace :api do
     namespace :v1 do
+      namespace :admin do
+        get "overview", to: "dashboard#overview"
+        get "users", to: "dashboard#users"
+        get "transactions", to: "dashboard#transactions"
+      end
       post "auth/token", to: "auth#create", as: :auth_token
       post "auth/signup", to: "auth#signup", as: :auth_signup
       delete "auth/token", to: "auth#destroy"

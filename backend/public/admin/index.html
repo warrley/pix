@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pix Admin</title>
+  <link rel="stylesheet" href="/admin/styles.css">
+</head>
+<body>
+  <main id="login-screen" class="login-screen">
+    <section class="login-card">
+      <div class="brand-mark">P</div>
+      <p class="eyebrow">Painel administrativo</p>
+      <h1>Bem-vindo de volta</h1>
+      <p class="login-subtitle">Entre com uma conta de operador.</p>
+      <form id="login-form">
+        <label>E-mail
+          <input id="email" type="email" value="alice.test@example.com" autocomplete="username" required>
+        </label>
+        <label>Senha
+          <input id="password" type="password" value="password123" autocomplete="current-password" required>
+        </label>
+        <p id="login-error" class="error" role="alert"></p>
+        <button class="primary-button" type="submit">Entrar no painel</button>
+      </form>
+    </section>
+  </main>
+
+  <div id="dashboard" class="dashboard hidden">
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-mark small">P</span><span>Pix Admin</span></div>
+      <nav>
+        <button class="nav-item active" data-view="overview"><span>⌂</span>Visão geral</button>
+        <button class="nav-item" data-view="users"><span>♙</span>Usuários</button>
+        <button class="nav-item" data-view="transactions"><span>↔</span>Movimentações</button>
+      </nav>
+      <button id="logout" class="logout">Sair</button>
+    </aside>
+
+    <section class="content">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Central de operações</p>
+          <h1 id="page-title">Visão geral</h1>
+        </div>
+        <div class="topbar-actions">
+          <span id="last-updated" class="last-updated"></span>
+          <button id="refresh-btn" class="refresh-btn" type="button" title="Atualizar dados">↻ Atualizar</button>
+          <div class="operator">
+            <div class="avatar" id="operator-avatar">A</div>
+            <div><strong id="operator-name">Operador</strong><span>Administrador</span></div>
+          </div>
+        </div>
+      </header>
+
+      <div id="view-overview" class="view">
+        <section class="insights-strip" id="insights-strip" aria-label="Insights operacionais"></section>
+        <section class="stats-grid" id="stats-grid"></section>
+        <section class="analytics-grid">
+          <article class="panel chart-panel">
+            <div class="panel-heading"><div><p class="eyebrow">Últimos 7 dias</p><h2>Volume movimentado</h2></div></div>
+            <div id="volume-chart" class="bar-chart"></div>
+          </article>
+          <article class="panel status-panel">
+            <div class="panel-heading"><div><p class="eyebrow">Distribuição</p><h2>Transações</h2></div></div>
+            <div id="status-list" class="status-list"></div>
+          </article>
+          <article class="panel keys-panel">
+            <div class="panel-heading"><div><p class="eyebrow">Diretório DICT</p><h2>Chaves PIX por tipo</h2></div></div>
+            <div id="keys-list" class="status-list"></div>
+          </article>
+        </section>
+        <section class="insights-grid">
+          <article class="panel">
+            <div class="panel-heading"><div><p class="eyebrow">Diagnóstico</p><h2>Principais motivos de falha</h2></div></div>
+            <div id="failure-reasons-list" class="status-list"></div>
+          </article>
+          <article class="panel">
+            <div class="panel-heading"><div><p class="eyebrow">Ranking (Concluídas)</p><h2>Top contas por volume enviado</h2></div></div>
+            <div class="table-wrap" tabindex="0" role="region" aria-label="Top contas por volume"><table><thead><tr><th>Titular</th><th>Conta</th><th>Ops</th><th>Total enviado</th><th>Saldo atual</th></tr></thead><tbody id="top-accounts-rows"></tbody></table></div>
+          </article>
+        </section>
+        <article class="panel">
+          <div class="panel-heading"><div><p class="eyebrow">Tempo real</p><h2>Últimas movimentações</h2></div></div>
+          <div class="table-wrap" tabindex="0" role="region" aria-label="Últimas movimentações"><table><thead><tr><th>Cliente</th><th>Destino</th><th>Valor</th><th>Status</th><th>Data</th></tr></thead><tbody id="recent-rows"></tbody></table></div>
+        </article>
+      </div>
+
+      <div id="view-users" class="view hidden">
+        <article class="panel">
+          <div class="panel-heading toolbar">
+            <div><p class="eyebrow">Base cadastral</p><h2>Usuários</h2></div>
+            <input id="user-search" type="search" placeholder="Buscar por nome ou e-mail">
+          </div>
+          <div class="table-wrap" tabindex="0" role="region" aria-label="Lista de usuários"><table><thead><tr><th>Usuário</th><th>Papel</th><th>Status</th><th>Contas</th><th>Saldo total</th><th>Última atividade</th></tr></thead><tbody id="users-rows"></tbody></table></div>
+        </article>
+      </div>
+
+      <div id="view-transactions" class="view hidden">
+        <article class="panel">
+          <div class="panel-heading toolbar">
+            <div><p class="eyebrow">Monitoramento</p><h2>Movimentações</h2></div>
+            <select id="status-filter"><option value="">Todas as situações</option><option value="completed">Concluídas</option><option value="processing">Processando</option><option value="failed">Falhas</option><option value="cancelled">Canceladas</option><option value="refunded">Estornadas</option></select>
+          </div>
+          <div class="table-wrap" tabindex="0" role="region" aria-label="Lista de movimentações"><table><thead><tr><th>ID</th><th>Origem</th><th>Destino</th><th>Valor</th><th>Status</th><th>Data</th></tr></thead><tbody id="transactions-rows"></tbody></table></div>
+        </article>
+      </div>
+    </section>
+  </div>
+  <script src="/admin/app.js"></script>
+</body>
+</html>

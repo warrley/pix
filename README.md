@@ -61,6 +61,17 @@ Set `METRICS_BEARER_TOKEN`, `GRAFANA_ADMIN_USER`, and `GRAFANA_ADMIN_PASSWORD` i
 - **Prometheus**: [http://127.0.0.1:9090](http://127.0.0.1:9090) (bound to loopback by default).
 - **Grafana**: [http://127.0.0.1:3001](http://127.0.0.1:3001) (authenticated with `GRAFANA_ADMIN_USER` / `GRAFANA_ADMIN_PASSWORD` from `.env` — pre-provisioned with the Prometheus datasource and the **PIX — Observabilidade Completa** dashboard under `ops/grafana/`).
 - **PostgreSQL Exporter**: `http://127.0.0.1:9187/metrics`
+The seed also creates example completed, cancelled, refunded and failed transactions across the last seven days.
+
+### Administrative Dashboard
+
+With the backend running, open:
+
+- Dashboard: [http://localhost:3000/admin](http://localhost:3000/admin)
+- Test operator: `alice.test@example.com`
+- Password: `password123`
+
+The dashboard uses the protected `/api/v1/admin/*` endpoints and only accepts operators with the `users:admin`, `accounts:admin`, and `reports:read` scopes.
 
 ---
 
